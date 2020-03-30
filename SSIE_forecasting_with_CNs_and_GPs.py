@@ -29,9 +29,9 @@ dimYR = 57
 
 datapath="./correlations/"
 
-lat = (np.fromfile("./psn25lats_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
-lon = (np.fromfile("./psn25lons_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
-psa = (np.fromfile("./psn25area_v3.dat",dtype='<i4').reshape(dimX,dimY))/1000
+lat = (np.fromfile("./Data/psn25lats_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
+lon = (np.fromfile("./Data/psn25lons_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
+psa = (np.fromfile("./Data/psn25area_v3.dat",dtype='<i4').reshape(dimX,dimY))/1000
 
 SIC = {}
 regions = ['total', 'Beaufort_Sea', 'Chukchi_Sea', 'East_Siberian_Sea', 'Laptev_Sea', 'Kara_Sea', 'Barents_Sea', 'Greenland_Sea', 'Baffin_Bay', 'Canadian_Arch']
@@ -43,9 +43,9 @@ def readSIE():
     for k in range(len(regions)):
         tag = regions[k]+'_sep'
         if regions[k] == 'total':
-            SIEs[tag] = np.genfromtxt('./N_'+str('%02d'%index)+'_extent_v3.0.csv',delimiter=',').T[4][1:]
+            SIEs[tag] = np.genfromtxt('./Data/N_'+str('%02d'%index)+'_extent_v3.0.csv',delimiter=',').T[4][1:]
         else:
-            SIEs[tag] = np.genfromtxt('./N_'+str(regions[k])+'_extent.csv',delimiter='\t')[1:,8]/1e6  
+            SIEs[tag] = np.genfromtxt('./Data/N_'+str(regions[k])+'_extent.csv',delimiter='\t')[1:,8]/1e6  
 
     for k in range(len(regions)):
         tag = regions[k]+'_sep'
@@ -78,7 +78,7 @@ def readSIC(monthID, month, days, ymax):
         k = -1
         for d in range(1,days+1):
             k = k + 1
-            icefile = open(glob.glob("./"+str(y)+"/nt_"+str(y)+str(monthID)+str("%02d"%d)+"*.bin")[0], "rb")
+            icefile = open(glob.glob("./Data/nt_"+str(y)+str(monthID)+str("%02d"%d)+"*.bin")[0], "rb")
             contents = icefile.read()
             icefile.close()
             s="%dB" % (int(dimX*dimY),)
@@ -89,7 +89,7 @@ def readSIC(monthID, month, days, ymax):
     month_fm_daily = np.nanmean(daily, axis=3)
     k = 0
     for y in range(1979,2018+1):
-        icefile = open(glob.glob("./nt_"+str(y)+str(monthID)+"*.bin")[0], "rb")
+        icefile = open(glob.glob("./Data/nt_"+str(y)+str(monthID)+"*.bin")[0], "rb")
         contents = icefile.read()
         icefile.close()
         s="%dB" % (int(dimX*dimY),)
