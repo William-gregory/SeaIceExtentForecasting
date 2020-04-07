@@ -16,7 +16,7 @@ import matplotlib as mpl
 from mpl_toolkits.basemap import Basemap
 import scipy
 from scipy.interpolate import griddata
-from scipy.optimize import minimize
+import minimize
 import CN
 
 #G L O B A L   V A R I A B L E S
@@ -182,21 +182,15 @@ def GPR(month):
             for area in SIC[month+'_anoms_'+str(year)]:
                 r,p = stats.pearsonr(y[:,0],SIC[month+'_anoms_'+str(year)][area][range(year-1979)])
                 if month == 'jun':
-                    l_init = [np.logspace(-7,2,15)[7],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[4],np.logspace(-7,2,15)[5],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[6],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[6]]
-                    sigma_init = [np.logspace(-3,9,15)[0],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[8],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[6]]
                     if r>0:
                         X.append(SIC[month+'_anoms_'+str(year)][area][range(year-1979+1)])   
                 elif month == 'jul':
-                    l_init = [np.logspace(-7,2,15)[7],np.logspace(-7,2,15)[5],np.logspace(-7,2,15)[4],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[3],np.logspace(-7,2,15)[3],np.logspace(-7,2,15)[3],np.logspace(-7,2,15)[3],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[4]]
-                    sigma_init = [np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[8],np.logspace(-3,9,15)[10],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[8]]
                     if k == 0:
                         X.append(SIC[month+'_anoms_'+str(year)][area][range(year-1979+1)])
                     else:
                         if (r>0) & (p/2<0.08):
                             X.append(SIC[month+'_anoms_'+str(year)][area][range(year-1979+1)])
                 elif month == 'aug':
-                    l_init = [np.logspace(-7,2,15)[6],np.logspace(-7,2,15)[9],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[2],np.logspace(-7,2,15)[1],np.logspace(-7,2,15)[5],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[0]]
-                    sigma_init = [np.logspace(-3,9,15)[8],np.logspace(-3,9,15)[1],np.logspace(-3,9,15)[10],np.logspace(-3,9,15)[10],np.logspace(-3,9,15)[10],np.logspace(-3,9,15)[10],np.logspace(-3,9,15)[7],np.logspace(-3,9,15)[9],np.logspace(-3,9,15)[6],np.logspace(-3,9,15)[9]]
                     if k == 0:
                         X.append(SIC[month+'_anoms_'+str(year)][area][range(year-1979+1)])
                     else:
@@ -208,54 +202,42 @@ def GPR(month):
             X = X[:-1,:]
 
             M = np.abs(np.cov(X, rowvar=False, bias=True))
-            M = M - np.eye(len(M))*M.diagonal()
-            M = M - np.eye(len(M))*np.nansum(M,axis=0)
+            np.fill_diagonal(M,0)
+            np.fill_diagonal(M,-np.sum(M,axis=0))
 
             def MLII(hyperparameters): #Empirical Bayesian technique for optimisation of hyperparameters
-                ℓ = np.exp(hyperparameters[0]) ; σ_tilde = np.exp(hyperparameters[1])
+                ℓ = np.exp(hyperparameters[0]) ; σf = np.exp(2*hyperparameters[1]) ; σn = np.exp(2*hyperparameters[2])
                 try:
-                    Σ_tilde = scipy.linalg.expm(ℓ*M)
-                    K_tilde = np.linalg.multi_dot([X,Σ_tilde,X.T]) + np.eye(n)*σ_tilde
-                    L_tilde = np.linalg.cholesky(K_tilde)
-                    A_tilde = np.linalg.solve(L_tilde.T,np.linalg.solve(L_tilde,y))
-                    α = (np.dot(y.T,A_tilde)/n)[0][0]
-                    σ = α*σ_tilde
-                    Σ = α * scipy.linalg.expm(ℓ*M)
-                    K = np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σ
+                    Σ = σf * scipy.linalg.expm(ℓ*M)
+                    K = np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σn
                     L = np.linalg.cholesky(K)
-                    A = np.linalg.solve(L.T,np.linalg.solve(L,y))
-                    nlML = ((np.dot(y.T,A)/2 + np.log(L.diagonal()).sum() + (n*np.log(2*np.pi))/2))[0][0]
+                    α = np.linalg.solve(L.T,np.linalg.solve(L,y))
+                    nlML = (np.dot(y.T,α)/2 + np.log(L.diagonal()).sum() + n*np.log(2*np.pi))/2
 
-                    dKdℓ = np.linalg.multi_dot([X,np.dot(M,Σ),X.T])
-                    dKdσ_tilde = np.eye(n)*α
+                    Q = np.linalg.solve(L.T,np.linalg.solve(L,np.eye(n))) - np.dot(α,α.T)
+                    dKdℓ = np.linalg.multi_dot([X,np.dot(M,Σ),X.T])# + np.eye(n)*σ
+                    dKdσf = 2 * σf * np.linalg.multi_dot([X,Σ,X.T])# + np.eye(n)*α
 
-                    dKdθ1 = ((np.trace(np.linalg.solve(L.T,np.linalg.solve(L,dKdℓ)))/2 - np.linalg.multi_dot([A.T,dKdℓ,A])/2))[0][0]
-                    dKdθ2 = ((np.trace(np.linalg.solve(L.T,np.linalg.solve(L,dKdσ_tilde)))/2 - np.linalg.multi_dot([A.T,dKdσ_tilde,A])/2))[0][0]
-
+                    dKdθ1 = (Q*dKdℓ).sum()/2
+                    dKdθ2 = (Q*dKdσf).sum()/2
+                    dKdθ3 = σn*np.trace(Q)
                 except (np.linalg.LinAlgError,ValueError,OverflowError) as e:
                     nlML = np.inf
-                    dKdθ1 = np.inf ; dKdθ2 = np.inf
+                    dKdθ1 = np.inf ; dKdθ2 = np.inf ; dKdθ3 = np.inf
+                return nlML[0][0], np.asarray([dKdθ1,dKdθ2,dKdθ3])
 
-                return nlML, np.asarray([dKdθ1,dKdθ2])
+            θ = minimize.run(MLII,X=[np.log(1),np.log(1),np.log(.1)],length=100)
 
-            result = scipy.optimize.minimize(MLII,x0=np.asarray([np.log(l_init[k]),np.log(sigma_init[k])]),\
-                                                 method='CG',jac=True,options={'disp':False})
-
-            ℓ = np.exp(result.x[0]) ; σ_tilde = np.exp(result.x[1])
-            Σ_tilde = scipy.linalg.expm(ℓ*M)
-            L_tilde = np.linalg.cholesky(np.linalg.multi_dot([X,Σ_tilde,X.T]) + np.eye(n)*σ_tilde)
-            A_tilde = np.linalg.solve(L_tilde.T,np.linalg.solve(L_tilde,y))
-            α = (np.dot(y.T,A_tilde)/n)[0][0]
-            σ = α*σ_tilde
-            Σ = α * scipy.linalg.expm(ℓ*M)
-            L = np.linalg.cholesky(np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σ)
-            A = np.linalg.solve(L.T,np.linalg.solve(L,y))
+            ℓ = np.exp(θ[0]) ; σf = np.exp(θ[1]) ; σn = np.exp(θ[1])
+            Σ = σf * scipy.linalg.expm(ℓ*M)
+            L = np.linalg.cholesky(np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σn)
+            α = np.linalg.solve(L.T,np.linalg.solve(L,y))
             KXXs = np.linalg.multi_dot([X,Σ,Xs.T])
-            KXsXs = np.linalg.multi_dot([Xs,Σ,Xs.T]) + σ
+            KXsXs = np.linalg.multi_dot([Xs,Σ,Xs.T]) + σn
             v = np.linalg.solve(L,KXXs)
 
-            fmean[year-1985] = np.dot(KXXs.T,A)
-            fvar[year-1985] = (KXsXs - np.dot(v.T,v))
+            fmean[yend-1985] = np.dot(KXXs.T,α)
+            fvar[yend-1985] = (KXsXs - np.dot(v.T,v))
             lineT = (np.arange(year-1979+1)*SIEs_trend[regions[k]+'_sep'][year-1984-1,0]) + SIEs_trend[regions[k]+'_sep'][year-1984-1,1]
             fmean_rt[year-1985] = fmean[year-1985] + lineT[-1]
 
