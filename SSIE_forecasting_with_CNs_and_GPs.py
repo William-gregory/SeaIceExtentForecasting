@@ -215,8 +215,8 @@ def GPR(month):
                     nlML = (np.dot(y.T,α)/2 + np.log(L.diagonal()).sum() + n*np.log(2*np.pi))/2
 
                     Q = np.linalg.solve(L.T,np.linalg.solve(L,np.eye(n))) - np.dot(α,α.T)
-                    dKdℓ = np.linalg.multi_dot([X,np.dot(M,Σ),X.T])# + np.eye(n)*σ
-                    dKdσf = 2 * σf * np.linalg.multi_dot([X,Σ,X.T])# + np.eye(n)*α
+                    dKdℓ = np.linalg.multi_dot([X,np.dot(M,Σ),X.T])
+                    dKdσf = 2 * σf * np.linalg.multi_dot([X,Σ,X.T])
 
                     dKdθ1 = (Q*dKdℓ).sum()/2
                     dKdθ2 = (Q*dKdσf).sum()/2
