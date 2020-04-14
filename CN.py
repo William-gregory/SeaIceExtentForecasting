@@ -279,17 +279,4 @@ class Network:
             temp = np.nansum(temp_array, axis=(0,1))
             self.anomaly[A] = temp
           
-        for A in self.anomaly: 
-            for A2 in self.anomaly:
-                if A2 != A:
-                    self.links.setdefault(A, []).append(np.cov(self.anomaly[A],self.anomaly[A2], bias=True))
-                elif A2 == A:
-                    self.links.setdefault(A, []).append(np.nan)
-            
-        #for A in self.links:
-        #    absolute = []  
-        #    for i in self.links[A]:
-        #        if ~np.isnan(i):
-        #            absolute.append(abs(i))
-        #    self.strength[A] = np.nansum(absolute)
         
