@@ -58,13 +58,13 @@ def readSIE():
             SIEs[tag][a] = (SIEs[tag][a+1]+SIEs[tag][a-1])/2
         trend = np.zeros((2019-1984+1,2))
         dt = np.zeros((2019-1984+1,2019-1979+1))
-        for yend in range(1984,2019+1):
-            nmax = yend - 1979
+        for year in range(1984,2019+1):
+            nmax = year - 1979
             trendT, interceptT, r_valsT, probT, stderrT = scipy.stats.linregress(np.arange(nmax+1),SIEs[tag][range(nmax+1)])
             lineT = (trendT*np.arange(nmax+1)) + interceptT
-            trend[yend-1984,0] = trendT
-            trend[yend-1984,1] = interceptT
-            dt[yend-1984,range(nmax+1)] = SIEs[tag][range(nmax+1)]-lineT
+            trend[year-1984,0] = trendT
+            trend[year-1984,1] = interceptT
+            dt[year-1984,range(nmax+1)] = SIEs[tag][range(nmax+1)]-lineT
         SIEs_trend[tag] = trend
         SIEs_dt[tag] = dt
             
@@ -74,12 +74,12 @@ def readSIC(monthID, month, days, ymax):
     daily = np.zeros((dimX,dimY,ymax-2019+1,days)) ; daily[daily==0] = np.nan
     monthly = np.zeros((dimX,dimY,2018-1979+1)) ; monthly[monthly==0] = np.nan
     j = -1
-    for y in range(2019,ymax+1):
+    for year in range(2019,ymax+1):
         j = j + 1
         k = -1
-        for d in range(1,days+1):
+        for day in range(1,days+1):
             k = k + 1
-            icefile = open(glob.glob("./Data/nt_"+str(y)+str(monthID)+str("%02d"%d)+"*.bin")[0], "rb")
+            icefile = open(glob.glob("./Data/nt_"+str(year)+str(monthID)+str("%02d"%day)+"*.bin")[0], "rb")
             contents = icefile.read()
             icefile.close()
             s="%dB" % (int(dimX*dimY),)
@@ -89,8 +89,8 @@ def readSIC(monthID, month, days, ymax):
     daily[daily>1]=np.nan       
     month_fm_daily = np.nanmean(daily, axis=3)
     k = 0
-    for y in range(1979,2018+1):
-        icefile = open(glob.glob("./Data/nt_"+str(y)+str(monthID)+"*.bin")[0], "rb")
+    for year in range(1979,2018+1):
+        icefile = open(glob.glob("./Data/nt_"+str(year)+str(monthID)+"*.bin")[0], "rb")
         contents = icefile.read()
         icefile.close()
         s="%dB" % (int(dimX*dimY),)
@@ -111,9 +111,9 @@ def regrid(monthID, month, lat_ori, lon_ori, psa_ori):
     xr,yr=m(lonr,latr)
     
     data = SIC[str(month)+'_data']
-    regrid = np.zeros((dimXR,dimYR,np.shape(data)[2])) ; regrid[regrid==0] = np.nan
-    fill = np.zeros((dimX,dimY,np.shape(data)[2])) ; fill[fill==0] = np.nan
-    for t in range(np.shape(data)[2]):
+    regrid = np.zeros((dimXR,dimYR,data.shape[2])) ; regrid[regrid==0] = np.nan
+    fill = np.zeros((dimX,dimY,data.shape[2])) ; fill[fill==0] = np.nan
+    for t in range(data.shape[2]):
         ice_copy = np.copy(data[:,:,t])
         #SMMR Pole Hole Mask: 84.5 November 1978 - June 1987
         #SSM/I Pole Hole Mask: 87.2 July 1987 - December 2007
@@ -137,8 +137,8 @@ def regrid(monthID, month, lat_ori, lon_ori, psa_ori):
 def detrend(ymax, key):
     data = SIC[str(key)]
     X = data.shape[0] ; Y = data.shape[1]
-    for yend in range(1984,ymax+1):
-        nmax = yend - 1979
+    for year in range(1984,ymax+1):
+        nmax = year - 1979
         detrended = np.zeros((X,Y,nmax+1)) ; detrended[detrended==0] = np.nan
         trend = np.zeros((X,Y,2)) ; trend[trend==0] = np.nan
         for i,j in itertools.product(range(X),range(Y)):
@@ -149,21 +149,21 @@ def detrend(ymax, key):
                 trend[i,j,1] = interceptT
                 detrended[i,j,range(nmax+1)]=data[i,j,range(nmax+1)]-lineT
                 
-        SIC[str(key)+'_dt_'+str(yend)] = detrended  
-        SIC[str(key)+'_trend_'+str(yend)] = trend
+        SIC[str(key)+'_dt_'+str(year)] = detrended  
+        SIC[str(key)+'_trend_'+str(year)] = trend
 
 def networks(month, areas, ymax):
-    for yend in range(1985,ymax+1):
-        data = SIC[str(month)+'_regrid_dt_'+str(yend)]
-        print('Creating network: 1979 - ',yend)
-        nmax = yend - 1979
+    for year in range(1985,ymax+1):
+        data = SIC[str(month)+'_regrid_dt_'+str(year)]
+        print('Creating network: 1979 - ',year)
+        nmax = year - 1979
         network = CN.Network(dimX=dimXR,dimY=dimYR)
-        CN.Network.cell_level(network, data[:,:,range(nmax+1)], str(month), "_100sqkm_65deg_79-"+str(yend), datapath)
-        CN.Network.tau(network, data[:,:,range(nmax+1)], str(month), 0.01, "_100sqkm_65deg_79-"+str(yend), datapath)
-        CN.Network.area_level(network, data[:,:,:], str(month))
-        CN.Network.intra_links(network, data[:,:,range(nmax+1)], area=areas)
-        SIC[str(month)+'_nodes_'+str(yend)] = network.V
-        SIC[str(month)+'_anoms_'+str(yend)] = network.anomaly
+        CN.Network.cell_level(network, data, str(month), "_100sqkm_65deg_79-"+str(year), datapath)
+        CN.Network.tau(network, data, str(month), 0.01, "_100sqkm_65deg_79-"+str(year), datapath)
+        CN.Network.area_level(network, data, str(month))
+        CN.Network.intra_links(network, data, area=areas)
+        SIC[str(month)+'_nodes_'+str(year)] = network.V
+        SIC[str(month)+'_anoms_'+str(year)] = network.anomaly
         
 def GPR(month):
     for k in range(len(regions)):
