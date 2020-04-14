@@ -168,7 +168,7 @@ def networks(month, areas, ymax):
 def GPR(month):
     for k in range(len(regions)):
         print('Region: ',regions[k])
-        print('input month: ',months[m])
+        print('input month: ',month)
         fmean = np.zeros(2019-1985+1)
         fmean_rt = np.zeros(2019-1985+1)
         fvar = np.zeros(2019-1985+1)
@@ -225,7 +225,7 @@ def GPR(month):
 
             θ = minimize.run(MLII,X=[np.log(1e-6),np.log(1e-6),np.log(.1)],length=100)
 
-            ℓ = np.exp(θ[0]) ; σf = np.exp(θ[1]) ; σn = np.exp(θ[2])
+            ℓ = np.exp(θ[0]) ; σf = np.exp(2*θ[1]) ; σn = np.exp(2*θ[2])
             Σ = σf * scipy.linalg.expm(ℓ*M)
             L = np.linalg.cholesky(np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σn)
             α = np.linalg.solve(L.T,np.linalg.solve(L,y))
