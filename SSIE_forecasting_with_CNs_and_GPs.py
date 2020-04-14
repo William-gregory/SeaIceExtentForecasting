@@ -34,6 +34,7 @@ lon = (np.fromfile("./Data/psn25lons_v3.dat",dtype='<i4').reshape(dimX,dimY))/10
 psa = (np.fromfile("./Data/psn25area_v3.dat",dtype='<i4').reshape(dimX,dimY))/1000
 
 SIC = {}
+GP = {}
 regions = ['total', 'Beaufort_Sea', 'Chukchi_Sea', 'East_Siberian_Sea', 'Laptev_Sea', 'Kara_Sea', 'Barents_Sea', 'Greenland_Sea', 'Baffin_Bay', 'Canadian_Arch']
 
 def readSIE():
@@ -226,9 +227,9 @@ def GPR(month):
                     dKdθ1 = np.inf ; dKdθ2 = np.inf ; dKdθ3 = np.inf
                 return nlML[0][0], np.asarray([dKdθ1,dKdθ2,dKdθ3])
 
-            θ = minimize.run(MLII,X=[np.log(1),np.log(1),np.log(.1)],length=100)
+            θ = minimize.run(MLII,X=[np.log(1e-6),np.log(1e-6),np.log(.1)],length=100)
 
-            ℓ = np.exp(θ[0]) ; σf = np.exp(θ[1]) ; σn = np.exp(θ[1])
+            ℓ = np.exp(θ[0]) ; σf = np.exp(θ[1]) ; σn = np.exp(θ[2])
             Σ = σf * scipy.linalg.expm(ℓ*M)
             L = np.linalg.cholesky(np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σn)
             α = np.linalg.solve(L.T,np.linalg.solve(L,y))
@@ -241,9 +242,9 @@ def GPR(month):
             lineT = (np.arange(year-1979+1)*SIEs_trend[regions[k]+'_sep'][year-1984-1,0]) + SIEs_trend[regions[k]+'_sep'][year-1984-1,1]
             fmean_rt[year-1985] = fmean[year-1985] + lineT[-1]
 
-        GPR[month+'-sep_'+regions[k]+'_fmean'] = fmean
-        GPR[month+'-sep_'+regions[k]+'_fvar'] = fvar
-        GPR[month+'-sep_'+regions[k]+'_fmean_rt'] = fmean_rt
+        GP[month+'-sep_'+regions[k]+'_fmean'] = fmean
+        GP[month+'-sep_'+regions[k]+'_fvar'] = fvar
+        GP[month+'-sep_'+regions[k]+'_fmean_rt'] = fmean_rt
 
 
 print('Reading...')
