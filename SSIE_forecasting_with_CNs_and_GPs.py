@@ -107,8 +107,8 @@ def regrid(monthID, month, lat_ori, lon_ori, psa_ori):
     x,y = m(lon_ori,lat_ori)
     dx_res = 100000 #100 km square
     new_x = int((m.xmax-m.xmin)/dx_res)+1 ; new_y = int((m.ymax-m.ymin)/dx_res)+1
-    lonsG, latsG = m.makegrid(new_x, new_y)
-    xt,yt=m(lonsG,latsG)
+    lonr, latr = m.makegrid(new_x, new_y)
+    xr,yr=m(lonr,latr)
     
     data = SIC[str(month)+'_data']
     regrid = np.zeros((dimXR,dimYR,np.shape(data)[2])) ; regrid[regrid==0] = np.nan
@@ -118,11 +118,7 @@ def regrid(monthID, month, lat_ori, lon_ori, psa_ori):
         #SMMR Pole Hole Mask: 84.5 November 1978 - June 1987
         #SSM/I Pole Hole Mask: 87.2 July 1987 - December 2007
         #SSMIS Pole Hole Mask: 89.18 January 2008 - present
-        if t < 1987-1979:
-            pmask=84.5
-        elif (t == 1987-1979) & (monthID <= 6):
-            pmask=84.5
-        elif (t == 1987-1979) & (monthID > 6):
+        if t < 1988-1979:
             pmask=84.5
         elif (t > 1987-1979) & (t < 2008-1979):
             pmask=87.2
@@ -130,9 +126,9 @@ def regrid(monthID, month, lat_ori, lon_ori, psa_ori):
             pmask=89.2
         hole = np.nanmean(ice_copy[(lat_ori > pmask-0.5) & (lat_ori < pmask)]) #calculate the mean 0.5 degrees around polar hole
         fill[:,:,t] = np.ma.where((lat_ori >= pmask-0.5), hole, data[:,:,t]) #Fill polar hole with mean
-        regrid[:,:,t] = griddata((x.ravel(), y.ravel()),fill[:,:,t].ravel(), (xt, yt), method='linear') #downsample to 100km
+        regrid[:,:,t] = griddata((x.ravel(), y.ravel()),fill[:,:,t].ravel(), (xr, yr), method='linear') #downsample to 100km
         
-    psar = griddata((x.ravel(), y.ravel()),psa_ori.ravel(), (xt, yt), method='linear')*16 #downsample to 100km
+    psar = griddata((x.ravel(), y.ravel()),psa_ori.ravel(), (xr, yr), method='linear')*16 #downsample to 100km
     SIC[str(month)+'_fill'] = fill
     SIC[str(month)+'_regrid'] = regrid
     
