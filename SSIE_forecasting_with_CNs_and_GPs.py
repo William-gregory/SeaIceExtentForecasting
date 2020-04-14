@@ -237,8 +237,8 @@ def GPR(month):
             KXsXs = np.linalg.multi_dot([Xs,Σ,Xs.T]) + σn
             v = np.linalg.solve(L,KXXs)
 
-            fmean[yend-1985] = np.dot(KXXs.T,α)
-            fvar[yend-1985] = (KXsXs - np.dot(v.T,v))
+            fmean[year-1985] = np.dot(KXXs.T,α)
+            fvar[year-1985] = (KXsXs - np.dot(v.T,v))
             lineT = (np.arange(year-1979+1)*SIEs_trend[regions[k]+'_sep'][year-1984-1,0]) + SIEs_trend[regions[k]+'_sep'][year-1984-1,1]
             fmean_rt[year-1985] = fmean[year-1985] + lineT[-1]
 
