@@ -208,7 +208,7 @@ def GPR(month):
                     Σ = σf * scipy.linalg.expm(ℓ*M)
                     L = np.linalg.cholesky(np.linalg.multi_dot([X,Σ,X.T]) + np.eye(n)*σn)
                     α = np.linalg.solve(L.T,np.linalg.solve(L,y)).reshape(n,1)
-                    nlML = (np.dot(y.T,α)/2 + np.log(L.diagonal()).sum() + n*np.log(2*np.pi))/2
+                    nlML = np.dot(y.T,α)/2 + np.log(L.diagonal()).sum() + n*np.log(2*np.pi)/2
 
                     Q = np.linalg.solve(L.T,np.linalg.solve(L,np.eye(n))) - np.dot(α,α.T)
                     dKdℓ = np.linalg.multi_dot([X,np.dot(M,Σ),X.T])
