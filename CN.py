@@ -1,3 +1,7 @@
+### Compute Complex Networks of geospatial time series data
+### Author: William Gregory
+### Last updated: 18/02/2021
+
 import numpy as np
 import warnings
 import datetime
@@ -174,6 +178,7 @@ class Network:
         self.V = {}
         self.unavail = []
         k = 0
+        np.random.seed(2)
         print('Creating area-level network')  
         print(datetime.datetime.now())
         for i,j in itertools.product(range(self.dimX),range(self.dimY)):
@@ -191,12 +196,11 @@ class Network:
                         maxR = np.nanmax(neighbour_corrs)
                         if maxR > self.tau:
                             maxID = np.where(neighbour_corrs==maxR)
-                            if np.shape(maxID) == 1:
+                            if np.shape(maxID)[1] == 1:
                                 maxID = int(maxID[0])
-                                maxID = neighbours[maxID]
                             else:
-                                maxID = int(maxID[0][0])
-                                maxID = neighbours[maxID]
+                                maxID = int(maxID[0][np.random.randint(low=0,high=np.shape(maxID)[1])])
+                            maxID = neighbours[maxID]
                             if ([i,j] not in self.unavail) and ([maxID[0],maxID[1]] not in self.unavail):
                                 self.V.setdefault(k, []).append([i,j])
                                 self.V.setdefault(k, []).append([maxID[0],maxID[1]])
@@ -208,12 +212,11 @@ class Network:
                                     X, Rmean, Rmax = area_max_correlation(Area=self.V[k], neighbours=neighbours)
                                     if Rmax > self.tau:
                                         RmaxID = np.where(Rmean==Rmax)
-                                        if np.shape(RmaxID) == 1:
+                                        if np.shape(RmaxID)[1] == 1:
                                             RmaxID = int(RmaxID[0])
-                                            m = X[RmaxID]
                                         else:
-                                            RmaxID = int(RmaxID[0][0])
-                                            m = X[RmaxID]
+                                            RmaxID = int(RmaxID[0][np.random.randint(low=0,high=np.shape(RmaxID)[1])])
+                                        m = X[RmaxID]
                                         if m not in self.unavail:
                                             self.V.setdefault(k, []).append([m[0],m[1]])
                                             self.unavail.append([m[0],m[1]])
