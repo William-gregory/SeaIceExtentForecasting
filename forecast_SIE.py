@@ -156,9 +156,8 @@ def networks(month, areas, ymax):
         print('Creating network: 1979 - ',year)
         nmax = year - 1979
         network = CN.Network(dimX=dimXR,dimY=dimYR)
-        CN.Network.cell_level(network, data, str(month), "_100sqkm_65deg_79-"+str(year), datapath)
-        CN.Network.tau(network, data, str(month), 0.01, "_100sqkm_65deg_79-"+str(year), datapath)
-        CN.Network.area_level(network, data, str(month))
+        CN.Network.tau(network, data, 0.01)
+        CN.Network.area_level(network, data)
         CN.Network.intra_links(network, data, area=areas)
         SIC[str(month)+'_nodes_'+str(year)] = network.V
         SIC[str(month)+'_anoms_'+str(year)] = network.anomaly
