@@ -14,7 +14,7 @@ from scipy import stats
 import glob
 
 class Network:
-    def __init__(self, dimX=0, dimY=0, nodes=[], corrs=[], tau=0, V={}, unavail=[], anomaly={}, links={}):
+    def __init__(self, dimX=0, dimY=0, nodes=[], corrs=[], tau=0, V={}, unavail=[], anomaly={}, links={},strength={}):
         self.dimX = dimX
         self.dimY = dimY
         self.nodes = nodes
@@ -24,6 +24,7 @@ class Network:
         self.unavail = unavail
         self.anomaly = anomaly
         self.links = links
+        self.strength = strength
     
     def tau(self, data, alpha):
         print('Generating threshold factor')
@@ -271,13 +272,12 @@ class Network:
                 if A2 != A:
                     self.links.setdefault(A, []).append(stats.pearsonr(self.anomaly[A],self.anomaly[A2])[0]*(sdA*sdA2))
                 elif A2 == A:
-                    self.links.setdefault(A, []).append(np.nan)
+                    self.links.setdefault(A, []).append(0)
             
         for A in self.links:
             absolute = []  
             for i in self.links[A]:
-                if ~np.isnan(i):
-                    absolute.append(abs(i))
+                absolute.append(abs(i))
             self.strength[A] = np.nansum(absolute)
           
         
