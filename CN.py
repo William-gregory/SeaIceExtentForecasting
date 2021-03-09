@@ -1,6 +1,6 @@
 ### Compute Complex Networks of geospatial time series data
 ### Author: William Gregory
-### Last updated: 18/02/2021
+### Last updated: 09/03/2021
 
 import numpy as np
 import warnings
@@ -25,80 +25,25 @@ class Network:
         self.anomaly = anomaly
         self.links = links
     
-    def cell_level(self, data, tag, datapath):
-        print('Creating cell-level network')
-        print(datetime.datetime.now())
-        t = data.shape[2]
-        files = range(self.dimX*self.dimY)
-        nodes = self.dimX*self.dimY
-        count_array = []
-        if not os.path.exists(datapath+'/correlations_'+str(tag)):
-            os.makedirs(datapath+'/correlations_'+str(tag))
-            count = -1
-            latest = 0
-        elif (os.path.exists(datapath+'/correlations_'+str(tag))==True) & (os.path.exists(datapath+'/correlations_'+str(tag)+'/nodes.txt')==False):
-            pwdir = os.getcwd()
-            os.chdir(datapath+'/correlations_'+str(tag))
-            fss = glob.glob('*')
-            if len(fss) == 0:
-                count = -1
-                latest = 0
-            else:
-                latest = max(fss, key=os.path.getctime)
-                count = int(latest)
-                latest = int(latest) + 1
-                os.chdir(pwdir)
-                count_array = [int(f) for f in fss]
-        elif (os.path.exists(datapath+'/correlations_'+str(tag))==True) & (os.path.exists(datapath+'/correlations_'+str(tag)+'/nodes.txt')==True):
-            print('Correlations already pre-computed. Will load them instead')
-            return 
-        
-        for node1 in range(latest,nodes):
-            ix = int(math.floor(node1/self.dimY))
-            jx = int(node1 % self.dimY)
-            if (~np.isnan(data[ix,jx,range(t)]).all()) & (max(abs(data[ix,jx,range(t)])) > 0):
-                count += 1
-                count_array.append(count)
-                R = np.empty((self.dimX,self.dimY))
-                for node2 in range(nodes):
-                    iy = int(math.floor(node2/self.dimY))
-                    jy = int(node2 % self.dimY)
-                    if (node1 != node2) & (~np.isnan(data[iy,jy,range(t)]).all()) & (max(abs(data[iy,jy,range(t)])) > 0):
-                        R[iy,jy] = stats.pearsonr(data[ix,jx,range(t)],data[iy,jy,range(t)])[0]
-                    else:
-                        R[iy,jy] = np.nan
-                self.corrs.append(R)
-                np.savetxt(datapath+'/correlations_'+str(tag)+'/'+str("%02d"%files[count]), R, delimiter='\t')
-            else:
-                count += 1
-                
-        np.savetxt(datapath+'/correlations_'+str(tag)+'/nodes.txt',count_array,fmt='%i',newline='\n')
-        self.corrs = np.array(self.corrs)
-
-        print('Done!')
-    
-    def tau(self, data, alpha, tag, datapath):
+    def tau(self, data, alpha, tag):
         print('Generating threshold factor')
         print(datetime.datetime.now())
         
-        self.nodes = np.genfromtxt(datapath+'/correlations_'+str(tag)+'/nodes.txt')
-        
-        if len(self.corrs) == 0:
-            self.corrs = np.zeros((self.nodes.shape[0],self.dimX,self.dimY))
-            for n in range(self.nodes.shape[0]):
-                self.corrs[n,:,:] = np.genfromtxt(datapath+'/correlations_'+str(tag)+'/'+str("%02d"%self.nodes[n]), autostrip=True)
-        else:
-            pass
+        ID = np.where(np.abs(np.nanmax(data,2))>0)
+        R = np.corrcoef(data[ID])
+        self.corrs = np.zeros((np.shape(ID)[1],self.dimX,self.dimY))*np.nan
+        nodes = np.zeros(np.shape(ID)[1])
+        for n in range(np.shape(ID)[1]):
+            self.corrs[n,:,:][ID] = R[n,:]
+            self.nodes[n] = ID[0][n]*self.dimY + ID[1][n]
         
         df = data.shape[2] - 2
-        R = np.copy(self.corrs).ravel()
-        R[R<0] = np.nan
-        R = R[~np.isnan(R)]
+        R = R[R>=0]
         T = R*np.sqrt(df/(1 - R**2))
         P = stats.t.sf(T,df)
         R = R[P<alpha]
 
-        self.tau = np.nanmean(R)
+        self.tau = np.mean(R)
     
         print('Network threshold factor =', '%.3f' % self.tau)
     
@@ -232,32 +177,68 @@ class Network:
 
         self.unavail = []
         while True:
-            Rs = {}
-            unavail_neighbours = {}
-            num_cells = dict([(area,len(self.V[area])) if self.V[area] not in self.unavail else (area,0) for area in self.V.keys()])
-            maxID = max(num_cells.items(), key=operator.itemgetter(1))[0]
-            if num_cells[maxID] == 0:
+            num_cells = {}
+            Anei_Rs = {}
+            unavail_neis = []
+            #Identify largest area in terms of number of cells
+            for k in self.V:
+                if self.V[k][0] not in self.unavail:
+                    num_cells.setdefault(k, []).append(np.shape(self.V[k])[0])
+                else:
+                    num_cells.setdefault(k, []).append(0)
+            max_ID = max(num_cells.items(), key=operator.itemgetter(1))[0]
+            if num_cells[max_ID][0] == 0:
                 break
             else:
-                neighbours = area_neighbours(self.V[maxID], i_nan, j_nan)
-                for cell in neighbours:
-                    node = cell[0]*self.dimY + cell[1]
-                    Rmean = []                   
-                    if (node in self.nodes) & (cell not in self.V[maxID]) & (cell not in [k for k, g in itertools.groupby(sorted(itertools.chain(*unavail_neighbours.values())))]) & (len([area for area, cells in self.V.items() if cell in cells]) > 0):
-                        nID = [area for area, cells in self.V.items() if cell in cells][0]
-                        unavail_neighbours[nID] = self.V[nID]
-                        X, Rmean, Rmax = area_max_correlation(Area=self.V[nID]+self.V[maxID], neighbours=self.V[nID]+self.V[maxID])
-                        if nID not in Rs: 
-                            Rs[nID] = np.nanmean(Rmean)
+                #print('AreaID = ',max_ID, ', # of cells = ',len(self.V[max_ID]))
+                for X in self.V[max_ID]: #for each cell in the currently available largest area
+                    nei_1, nei_2, nei_3, nei_4 = cell_neighbours(X[0],X[1], i_nan, j_nan) #generate the cell's available neighbours
+                    nei_list = [nei_1, nei_2, nei_3, nei_4]
+                    for k in self.V: #search through all other areas in the network   
+                        for nei in nei_list: #search through each neighbour of the current cell in largest area
+                            R_mean = []
+                            if (nei not in self.V[max_ID]) & (nei in self.V[k]) & (nei not in unavail_neis): #if the neighbouring cell belongs to a neighbouring AREA, and is available
+                                #print('nei = ',nei,'is in Area ',k,'and is not in Area',max_ID)
+                                #print('Area',k,' = ',self.V[k])
+                                for i in range(np.shape(self.V[k])[0]):
+                                    unavail_neis.append(self.V[k][i])
+                                #here make a hypothetical area of the largest area (max_ID) and it's available neighbour (k) to check average correlation    
+                                hypoth_area = []
+                                for cell in self.V[max_ID]:
+                                    hypoth_area.append([cell[0],cell[1]])
+                                for cell in self.V[k]:
+                                    hypoth_area.append([cell[0],cell[1]])
+                                NA_list = []
+                                for cell in hypoth_area:
+                                    #print(cell)
+                                    R = []
+                                    ID = np.where(self.nodes == (cell[0]*self.dimY)+cell[1])
+                                    ID = int(ID[0])
+                                    for a in range(np.shape(hypoth_area)[0]):
+                                        b = int(hypoth_area[a][0])
+                                        c = int(hypoth_area[a][1])
+                                        if ([b,c] != [cell[0],cell[1]]) & ([b,c] not in NA_list):
+                                            #print('[',b,',',c,']')
+                                            R.append(self.corrs[ID,b,c])
+                                    NA_list.append([cell[0],cell[1]])
+                                    R_mean.append(np.nanmean(R))   
+                                if k not in Anei_Rs: 
+                                    Anei_Rs.setdefault(k, []).append(np.nanmean(R_mean))
+                                #print('Average correlation with Area',max_ID,'and neighbouring Area',k,' = ',Anei_Rs[k])
                 try:
-                    Rs_maxID = max(Rs.items(), key=operator.itemgetter(1))[0]
-                    if Rs[Rs_maxID] > self.tau:
-                        for cell in self.V.pop(Rs_maxID, None):
-                            self.V.setdefault(maxID, []).append([cell[0],cell[1]])
+                    Anei_Rs_max_ID = max(Anei_Rs.items(), key=operator.itemgetter(1))[0]
+                    #print('Maximum correlation with neighbouring area = ',Anei_Rs[Anei_Rs_max_ID][0])
+                    if Anei_Rs[Anei_Rs_max_ID][0] > self.tau:
+                        #print('ID_pair = ',Anei_Rs_max_ID)
+                        temp2 = self.V.pop(Anei_Rs_max_ID, None)
+                        for i in temp2:
+                            self.V.setdefault(max_ID, []).append([i[0],i[1]])
                     else:
-                        self.unavail.append(self.V[maxID])
+                        for i in range(np.shape(self.V[max_ID])[0]):
+                            self.unavail.append(self.V[max_ID][i])
                 except ValueError:
-                    self.unavail.append(self.V[maxID])
+                    for i in range(np.shape(self.V[max_ID])[0]):
+                        self.unavail.append(self.V[max_ID][i])
 
         print('Done!')
                 
@@ -281,5 +262,21 @@ class Network:
                 temp_array[cell[0],cell[1],:] = np.multiply(data[cell[0],cell[1],:],scale[cell[0],cell[1]])
             temp = np.nansum(temp_array, axis=(0,1))
             self.anomaly[A] = temp
+            
+        for A in self.anomaly:
+            sdA = np.std(self.anomaly[A])
+            for A2 in self.anomaly:
+                sdA2 = np.std(self.anomaly[A2])
+                if A2 != A:
+                    self.links.setdefault(A, []).append(stats.pearsonr(self.anomaly[A],self.anomaly[A2])[0]*(sdA*sdA2))
+                elif A2 == A:
+                    self.links.setdefault(A, []).append(np.nan)
+            
+        for A in self.links:
+            absolute = []  
+            for i in self.links[A]:
+                if ~np.isnan(i):
+                    absolute.append(abs(i))
+            self.strength[A] = np.nansum(absolute)
           
         
