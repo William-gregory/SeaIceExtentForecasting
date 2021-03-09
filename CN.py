@@ -30,10 +30,11 @@ class Network:
         print(datetime.datetime.now())
         
         ID = np.where(np.abs(np.nanmax(data,2))>0)
+        N = np.shape(ID)[1]
         R = np.corrcoef(data[ID])
-        self.corrs = np.zeros((np.shape(ID)[1],self.dimX,self.dimY))*np.nan
-        nodes = np.zeros(np.shape(ID)[1])
-        for n in range(np.shape(ID)[1]):
+        self.corrs = np.zeros((N,self.dimX,self.dimY))*np.nan
+        self.nodes = np.zeros(N)
+        for n in range(N):
             self.corrs[n,:,:][ID] = R[n,:]
             self.nodes[n] = ID[0][n]*self.dimY + ID[1][n]
         
