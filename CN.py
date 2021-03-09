@@ -25,7 +25,7 @@ class Network:
         self.anomaly = anomaly
         self.links = links
     
-    def tau(self, data, alpha, tag):
+    def tau(self, data, alpha):
         print('Generating threshold factor')
         print(datetime.datetime.now())
         
