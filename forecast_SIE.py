@@ -17,7 +17,7 @@ from mpl_toolkits.basemap import Basemap
 import scipy
 from scipy.interpolate import griddata
 import minimize
-import CN
+import ComplexNetworks as CN
 
 #G L O B A L   V A R I A B L E S
 
@@ -155,10 +155,10 @@ def networks(month, areas, ymax):
         data = SIC[str(month)+'_regrid_dt_'+str(year)]
         print('Creating network: 1979 - ',year)
         nmax = year - 1979
-        network = CN.Network(dimX=dimXR,dimY=dimYR)
-        CN.Network.tau(network, data, 0.01)
-        CN.Network.area_level(network, data)
-        CN.Network.intra_links(network, data, area=areas)
+        network = CN.Network(data)
+        CN.Network.get_threshold(network)
+        CN.Network.get_nodes(network)
+        CN.Network.get_links(network, area=areas)
         SIC[str(month)+'_nodes_'+str(year)] = network.V
         SIC[str(month)+'_anoms_'+str(year)] = network.anomaly
         
