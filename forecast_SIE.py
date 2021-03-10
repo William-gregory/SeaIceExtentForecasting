@@ -159,7 +159,7 @@ def networks(month, areas, ymax):
         CN.Network.get_threshold(network)
         CN.Network.get_nodes(network)
         CN.Network.get_links(network, area=areas)
-        SIC[str(month)+'_nodes_'+str(year)] = network.V
+        SIC[str(month)+'_nodes_'+str(year)] = network.nodes
         SIC[str(month)+'_anoms_'+str(year)] = network.anomaly
         
 def GPR(month):
