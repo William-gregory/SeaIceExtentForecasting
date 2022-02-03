@@ -141,16 +141,18 @@ def detrend(dataset):
             dataset['dt'] = detrended
             dataset['trend'] = trend
 
-def networks(dataset,ymax,latlon=True):
-    import ComplexNetworks as CN
-    network = CN.Network(data=dataset['dt'])
-    CN.Network.get_threshold(network,significance=0.01)
-    CN.Network.get_nodes(network, latlon=latlon)
+def networks(dataset,key,latlon=True):
+    from CNs_backup.backups import CN_oldest as CN
+    dimXR = dataset['dt'].shape[0] ; dimYR = dataset['dt'].shape[1]
+    network = CN.Network(dimX=dimXR,dimY=dimYR)
+    CN.Network.cell_level(network, dataset['dt'], 'Jul', key, home+'/DATA/')
+    CN.Network.tau(network, dataset['dt'], 0.01, 'Jul', key, home+'/DATA/')
+    CN.Network.area_level(network, dataset['dt'],latlon_grid=latlon)
     if latlon:
-        CN.Network.get_links(network, lat=dataset['lat'])
+        CN.Network.intra_links(network, dataset['dt'], lat=dataset['lat'])
     else:
-        CN.Network.get_links(network, area=dataset['psar'])
-    dataset['nodes'] = network.nodes
+        CN.Network.intra_links(network, dataset['dt'], area=dataset['psar'])
+    dataset['nodes'] = network.V
     dataset['anoms'] = network.anomaly
 
 def forecast(ymax):
@@ -249,7 +251,7 @@ SIEs,SIEs_dt,SIEs_trend = read_SIE()
 SIC = readNSIDC(ymax=fyear)
 print('Processing data...')
 detrend(SIC)
-networks(SIC,ymax=fyear,latlon=False)
+networks(SIC,latlon=False,key="_SIC_100sqkm_65N_79-"+str(fyear))
 print('Running forecast...')
 forecast(ymax=fyear)
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
