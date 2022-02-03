@@ -128,7 +128,7 @@ def detrend(dataset):
             dataset['trend'] = trend
 
 def networks(dataset,key,latlon=True):
-    from CNs_backup.backups import CN_oldest as CN
+    import ComplexNetworks as CN
     dimXR = dataset['dt'].shape[0] ; dimYR = dataset['dt'].shape[1]
     network = CN.Network(dimX=dimXR,dimY=dimYR)
     CN.Network.tau(network, dataset['dt'], 0.01, 'Dec', key, home+'/DATA/')
