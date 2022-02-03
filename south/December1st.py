@@ -59,7 +59,6 @@ def readNSIDC(ymax):
     dXR,dYR = SIC['xr'].shape
     SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
-    month = 7
     k = 0
     for year in range(1979,ymax+1):
         if (year == ymax) or (year == ymax-1):
@@ -124,8 +123,8 @@ def detrend(dataset):
             trend[i,j,1] = reg[1]
             detrended[i,j,range(T)]=data[i,j,range(T)]-lineT
 
-            dataset['dt'] = detrended
-            dataset['trend'] = trend
+    dataset['dt'] = detrended
+    dataset['trend'] = trend
 
 def networks(dataset,latlon=True):
     import ComplexNetworks as CN
