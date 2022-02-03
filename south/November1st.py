@@ -180,7 +180,7 @@ def forecast(ymax):
     regions = ['Pan-Antarctic','Ross','Weddell']
     alaska = 0
     for k in range(3):
-        y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
+        y = np.asarray([SIEs_dt[regions[k]][1:]]).T #n x 1
         n = len(y)
         X = []
         for area in SIC['anoms']:
