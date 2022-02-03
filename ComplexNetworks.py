@@ -21,90 +21,24 @@ class Network:
         self.links = links
         self.strength = strength
     
-    def cell_level(self, data, month, tag, datapath):
-        dimX = self.R.shape[0]
-        dimY = self.R.shape[1]
-        #print('Creating cell-level network of '+str(month))
-        #print(datetime.datetime.now())
-        if not os.path.exists(datapath+'/correlations_'+str(month)+str(tag)):
-            os.makedirs(datapath+'/correlations_'+str(month)+str(tag))
-        else:
-            print('Correlations already exist! Terminating job so as not to overwrite files')
-            return
-        count = -1
-        count_array = []
-        files = range(dimX*dimY)
-        nodes = dimX*dimY
-        for i,j in itertools.product(range(dimX),range(dimY)):
-            if max(abs(data[i,j,range(np.shape(data)[2])])) > 0:
-                count = count + 1
-                count_array.append(count)
-                node = i*dimY + j
-                for node1 in range(nodes):
-                    if node1 % dimY == 0: #These are all the grid cells in column 0
-                        node1_row = int(node1/dimY)
-                        node1_col = 0
-                    else:
-                        node1_row = int(math.floor(node1/dimY))
-                        node1_col = int(node1 % dimY)  
-                    if (node1 != node) & (max(abs(data[node1_row,node1_col,range(np.shape(data)[2])])) > 0):
-                        l = -1
-                        A = [0]*(np.shape(data)[2])
-                        B = [0]*(np.shape(data)[2])
-                        for k in range(np.shape(data)[2]):
-                            if (~np.isnan(data[i,j,k])) & (~np.isnan(data[node1_row,node1_col,k])):
-                                l = l + 1
-                                A[l] = data[i,j,k]
-                                B[l] = data[node1_row,node1_col,k]
-                        if l >= 0:
-                            R = stats.pearsonr(A,B)[0]
-                            self.R[node1_row,node1_col] = R
-                        else:
-                            self.R[node1_row,node1_col] = np.nan
-                    else:
-                        self.R[node1_row,node1_col] = np.nan
-                Corr = np.reshape(self.R[:,:],(dimX,dimY))
-                np.savetxt(datapath+'/correlations_'+str(month)+str(tag)+'/'+str("%02d"%files[count]), Corr, delimiter='\t')          
-            else:
-                count = count + 1
-        np.savetxt(datapath+'/correlations_'+str(month)+str(tag)+'/nodes.txt',count_array,fmt='%i',newline='\n')
-        #print(datetime.datetime.now())
-        #print('Done!')
-    
-    def tau(self, data, alpha, month, tag, datapath):
-        self.corrs = []
-        self.nodes = []
-        self.V = {}
-        self.A = {}
-        #print('Reading correlation files')
-        self.nodes.append(np.genfromtxt(datapath+'/correlations_'+str(month)+str(tag)+'/nodes.txt'))
-        self.nodes = np.array(self.nodes) 
-        nodes_len = np.arange(self.nodes[0].shape[0])
-        for i in nodes_len:
-            self.corrs.append(np.genfromtxt(datapath+'/correlations_'+str(month)+str(tag)+'/'+str("%02d"%self.nodes[0,i]), autostrip=True)) 
-        self.corrs = np.array(self.corrs)
+    def tau(self, data, alpha):
+        dimX = data.shape[0] ; dimY = data.shape[1] ; dimT = data.shape[2]
+        ID = np.where(np.abs(np.nanmax(data,2))>0)
+        N = np.shape(ID)[1]
+        R = np.corrcoef(data[ID])
+        np.fill_diagonal(R,np.nan)
+        self.corrs = np.zeros((N,dimX,dimY))*np.nan
+        self.nodes = np.atleast_2d(ID[0]*dimY + ID[1])
+        for n in range(N):
+            self.corrs[n,:,:][ID] = R[n,:]
         
-        #print('Running T-tests')
-        df = np.shape(data)[2] - 2
-        #print('Degrees of Freedom: ',df)
-        copy_corrs = np.copy(self.corrs)
-        copy_corrs[copy_corrs<0] = np.nan
-        flat_corrs = copy_corrs.ravel()
-        #flat_corrs = np.random.choice(flat_corrs, math.floor(len(flat_corrs)*0.1))
-        corrs_alpha = []
-        for R in flat_corrs:
-            if abs(R) == 1:
-                corrs_alpha.append(R)
-            elif ~np.isnan(R):
-                T = (R)*np.sqrt(df/(1 - (R**2)))
-                P = stats.t.sf(T, df)
-                if P < alpha:
-                    corrs_alpha.append(R)
-        
-        #print('Minimum Significant Correlation = ',np.nanmin(corrs_alpha))
-        self.tau = np.nanmean(corrs_alpha)
+        df = dimT - 2
+        R = R[R>=0]
+        T = R*np.sqrt(df/(1 - R**2))
+        P = stats.t.sf(T,df)
+        R = R[P<alpha]
 
-        #print(str(month)+' tau = ',self.tau)
+        self.tau = np.mean(R)
     
     def area_level(self, data, latlon_grid=False):
         dimX = self.R.shape[0]
