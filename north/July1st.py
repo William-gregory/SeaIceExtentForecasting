@@ -60,6 +60,7 @@ def readNSIDC(ymax):
     SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
     monthly = np.zeros((dimX,dimY,ymax-1979+1))*np.nan
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
+    month = 5
     k = 0
     for year in range(1979,ymax+1):
         if year == ymax:
