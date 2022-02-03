@@ -82,13 +82,13 @@ def readNSIDC(ymax):
                 f += 1
             monthly = np.nanmean(daily,2)
         else:
-            if year < 1988:
+            if year < 1987:
                 sat = 'n07'
-            elif (year > 1987) & (year < 1992):
+            elif (year > 1986) & (year < 1992):
                 sat = 'f08'
-            elif (year > 1991) & (year < 1996):
+            elif (year > 1991) & (year < 1995):
                 sat = 'f11'
-            elif (year > 1995) & (year < 2008):
+            elif (year > 1994) & (year < 2008):
                 sat = 'f13'
             elif year > 2007:
                 sat = 'f17'
