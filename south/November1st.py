@@ -163,11 +163,11 @@ def detrend(dataset):
             dataset['dt'] = detrended
             dataset['trend'] = trend
 
-def networks(dataset,key,latlon=True):
+def networks(dataset,latlon=True):
     import ComplexNetworks as CN
     dimXR = dataset['dt'].shape[0] ; dimYR = dataset['dt'].shape[1]
     network = CN.Network(dimX=dimXR,dimY=dimYR)
-    CN.Network.tau(network, dataset['dt'], 0.01, 'Oct', key, home+'/DATA/')
+    CN.Network.tau(network, dataset['dt'], 0.01)
     CN.Network.area_level(network, dataset['dt'],latlon_grid=latlon)
     if latlon:
         CN.Network.intra_links(network, dataset['dt'], lat=dataset['lat'])
@@ -271,7 +271,7 @@ SST = readERA5(ymax=fyear-1)
 print('Processing data...')
 detrend(SIC)
 detrend(SST)
-networks(SIC,latlon=False,key="_SIC_100sqkm_55S_79-"+str((fyear-1)))
+networks(SIC,latlon=False)
 networks(SST,key="_SST_40S_79-"+str((fyear-1)))
 print('Running forecast...')
 forecast(ymax=fyear)
