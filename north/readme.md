@@ -15,7 +15,7 @@ the steps below:
 1) cp ../ComplexNetworks.py ~/.local/lib/python3.7/site-packages/.
 2) pip install --user netCDF4
 3) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
-4) Once this is done, type command 7) below into the terminal, replacing uid and psswd with your details
+4) Once this is done, type command 5) below into the terminal, replacing uid and psswd with your details
 5) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
 6) chmod 0600 ~/.netrc
 7) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
