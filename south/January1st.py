@@ -17,7 +17,7 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 
-def read_SIE(fyear): 
+def read_SIE(): 
     SIEs = {}
     SIEs_dt = {}
     SIEs_trend = {}
@@ -143,7 +143,7 @@ def networks(dataset,latlon=True):
 def forecast(ymax):
     regions = ['Pan-Antarctic','Ross','Weddell']
     for k in range(3):
-        y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
+        y = np.asarray([SIEs_dt[regions[k]][1:]).T #n x 1
         n = len(y)
         X = []
         for area in SIC['anoms']:
@@ -227,7 +227,7 @@ m = Basemap(projection='spstere',boundinglat=-55,lon_0=180,resolution='l')
 fyear = int(datetime.date.today().year)
 
 print('Downloading and reading data...')
-SIEs,SIEs_dt,SIEs_trend = read_SIE(fyear)
+SIEs,SIEs_dt,SIEs_trend = read_SIE()
 SIC = readNSIDC(ymax=fyear-1)
 print('Processing data...')
 detrend(SIC)
