@@ -17,7 +17,7 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 
-def read_SIE(): 
+def read_SIE(fyear): 
     SIEs = {}
     SIEs_dt = {}
     SIEs_trend = {}
@@ -82,13 +82,13 @@ def readNSIDC(ymax):
                 f += 1
             monthly = np.nanmean(daily,2)
         else:
-            if year < 1988:
+            if year < 1987:
                 sat = 'n07'
-            elif (year > 1987) & (year < 1992):
+            elif (year > 1986) & (year < 1992):
                 sat = 'f08'
-            elif (year > 1991) & (year < 1996):
+            elif (year > 1991) & (year < 1995):
                 sat = 'f11'
-            elif (year > 1995) & (year < 2008):
+            elif (year > 1994) & (year < 2008):
                 sat = 'f13'
             elif year > 2007:
                 sat = 'f17'
@@ -224,10 +224,10 @@ sic_ftp1 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0081_nrt_nasateam_seaice/sou
 sic_ftp2 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0051_gsfc_nasateam_seaice/final-gsfc/south/monthly'
 
 m = Basemap(projection='spstere',boundinglat=-55,lon_0=180,resolution='l')
-fyear = int(datetime.date.today().year)+1
+fyear = int(datetime.date.today().year)
 
 print('Downloading and reading data...')
-SIEs,SIEs_dt,SIEs_trend = read_SIE()
+SIEs,SIEs_dt,SIEs_trend = read_SIE(fyear)
 SIC = readNSIDC(ymax=fyear-1)
 print('Processing data...')
 detrend(SIC)
