@@ -19,8 +19,7 @@ the steps below:
 5) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
 6) chmod 0600 ~/.netrc
 7) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
-8) Place the hidden file .cdsapirc containing the url information and your api key into ~/. on the CPOM serv\
-er
+8) Place the hidden file .cdsapirc containing the url information and your api key into ~/.
 9) You may need to run pip install --user cdsapi
 10) python June1st.py (the forecasts will be printed to the terminal)
 
