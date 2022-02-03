@@ -1,27 +1,28 @@
 This directory contains a series of python scripts to run sea ice extent
 forecasts in line with the Sea Ice Prediction Networks annual call for
-submissions. The call for submissions begins each June (June 1st) where 
+submissions. The call for submissions begins each June (June 1st) where
 forecasts of the September sea ice extent are made based on data from
-May -- the deadline to submit the forecast to SIPN is typically the 12th 
-of each call month. This then proceeds for July 1st, August 1st, and 
-September 1st.
+May -- the deadline to submit the forecast to SIPN is typically the 12th
+of each call month. This then proceeds for July 1st, August 1st, and
+September 1st. Note that these scripts are setup to run forecasts in real-time,
+hence they should only be executed after the latest data become available. In
+other words they should be run in the 12 day window after each call month.
 
-The forecast method in this case is the statistical model outlined in 
+The forecast method in this case is the statistical model outlined in
 Gregory et al., 2020. To run this code for the first time, please follow
 the steps below:
 
-1) cp -r /home/wjg/SIPN_forecasts ~/.
-2) cp ~/SIPN_forecasts/north/misc/ComplexNetworks.py ~/.local/lib/python3.7/site-packages/.
-3) conda activate base
-4) pip install --user netCDF4
-5) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
-6) Once this is done, type command 7) below into the terminal, replacing uid and psswd with your details
-7) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
-8) chmod 0600 ~/.netrc
-9) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
-10) Place the hidden file .cdsapirc containing the url information and your api key into ~/. on the CPOM server
-11) You may need to run pip install --user cdsapi
-12) python July1st.py
+1) cp ../ComplexNetworks.py ~/.local/lib/python3.7/site-packages/.
+2) pip install --user netCDF4
+3) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
+4) Once this is done, type command 7) below into the terminal, replacing uid and psswd with your details
+5) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
+6) chmod 0600 ~/.netrc
+7) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
+8) Place the hidden file .cdsapirc containing the url information and your api key into ~/. on the CPOM serv\
+er
+9) You may need to run pip install --user cdsapi
+10) python June1st.py (the forecasts will be printed to the terminal)
 
 
 
