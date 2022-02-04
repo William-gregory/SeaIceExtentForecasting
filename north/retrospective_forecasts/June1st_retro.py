@@ -180,7 +180,7 @@ def detrend(dataset,fmin,fmax):
         dataset['trend_'+str(year)] = trend
 
 def networks(dataset,fmin,fmax,latlon=True):
-    from CNs_backup.backups import CN_oldest as CN
+    import ComplexNetworks as CN
     for year in range(fmin,fmax+1):
         dimXR = dataset['dt_'+str(year)].shape[0] ; dimYR = dataset['dt_'+str(year)].shape[1]
         network = CN.Network(dimX=dimXR,dimY=dimYR)
