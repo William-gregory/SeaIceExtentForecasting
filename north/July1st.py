@@ -109,8 +109,8 @@ def readNSIDC(ymax):
             hole=87.2
         else:
             hole=89.2
-        phole = np.nanmean(data[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
-        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, data)
+        phole = np.nanmean(monthly[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
+        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, monthly)
         data_regrid[:,:,k] = griddata((SIC['x'].ravel(),SIC['y'].ravel()),filled.ravel(),\
                                              (SIC['xr'],SIC['yr']),'linear')
         k += 1
