@@ -9,66 +9,70 @@ import random
 from scipy import stats
 
 class Network:
-    def __init__(self, dimX=0, dimY=0, nodes=[], corrs=[], tau=0, V={}, A={}, unavail=[], anomaly={}, links={}, strength={}):
-        self.R = np.zeros((dimX,dimY))
-        self.nodes = nodes
-        self.corrs = corrs
-        self.tau = tau
+    def __init__(self,data,V={},A={},corrs=[],tau=0,nodes=[],unavail=[],anomaly={},links={},strength={},strengthmap=[]):
+        """
+        The input 'data' are expected to be de-trended (zero-mean)
+        and in the format x,y,t if an area grid, or lat,lon,t for
+        a lat-lon grid.
+        """
+        self.data = data
+        self.dimX,self.dimY,self.dimT = self.data.shape
         self.V = V
         self.A = A
+        self.corrs = corrs
+        self.tau = tau
+        self.nodes = nodes
         self.unavail = unavail
         self.anomaly = anomaly
         self.links = links
         self.strength = strength
+        self.strengthmap = strengthmap
     
-    def tau(self, data, alpha):
-        dimX = data.shape[0] ; dimY = data.shape[1] ; dimT = data.shape[2]
-        ID = np.where(np.abs(np.nanmax(data,2))>0)
+    def tau(self, significance=0.01):
+        ID = np.where(np.abs(np.nanmax(self.data,2))>0)
         N = np.shape(ID)[1]
-        R = np.corrcoef(data[ID])
+        R = np.corrcoef(self.data[ID])
         np.fill_diagonal(R,np.nan)
-        self.corrs = np.zeros((N,dimX,dimY))*np.nan
-        self.nodes = np.atleast_2d(ID[0]*dimY + ID[1])
+        self.corrs = np.zeros((N,self.dimX,self.dimY))*np.nan
+        self.nodes = np.atleast_2d(ID[0]*self.dimY + ID[1])
         for n in range(N):
             self.corrs[n,:,:][ID] = R[n,:]
         
-        df = dimT - 2
+        df = self.dimT - 2
         R = R[R>=0]
         T = R*np.sqrt(df/(1 - R**2))
         P = stats.t.sf(T,df)
-        R = R[P<alpha]
+        R = R[P<significance]
 
         self.tau = np.mean(R)
-    
-    def area_level(self, data, latlon_grid=False):
-        dimX = self.R.shape[0]
-        dimY = self.R.shape[1]
-        ids = np.where(np.isnan(data[:,:,:]))
+        
+    def area_level(self, latlon_grid=False):
+        ids = np.where(np.isnan(self.data))
         i_nan = ids[0][0] ; j_nan = ids[1][0]
         
         def gen_cell_neighbours(i, j, i_nan, j_nan):
             if [i-1,  j] not in self.unavail:
-                nei_1 = [i-1,  j] if 0 <=   j <= dimY-1 and 0 <= i-1 <= dimX-1 else [i_nan,j_nan]
+                nei_1 = [i-1,  j] if 0 <=   j <= self.dimY-1 and 0 <= i-1 <= self.dimX-1 else [i_nan,j_nan]
             else:
                 nei_1 = [i_nan,j_nan]
             if [i+1,  j] not in self.unavail:
-                nei_2 = [i+1,  j] if 0 <=   j <= dimY-1 and 0 <= i+1 <= dimX-1 else [i_nan,j_nan]
+                nei_2 = [i+1,  j] if 0 <=   j <= self.dimY-1 and 0 <= i+1 <= self.dimX-1 else [i_nan,j_nan]
             else:
                 nei_2 = [i_nan,j_nan]
             if ([  i,j-1] not in self.unavail) & (latlon_grid==False):
-                nei_3 = [  i,j-1] if 0 <= j-1 <= dimY-1 and 0 <=   i <= dimX-1 else [i_nan,j_nan]
+                nei_3 = [  i,j-1] if 0 <= j-1 <= self.dimY-1 and 0 <=   i <= self.dimX-1 else [i_nan,j_nan]
             elif ([  i,j-1] in self.unavail) & (latlon_grid==False):
                 nei_3 = [i_nan,j_nan]
             elif ([  i,j-1] not in self.unavail) & (latlon_grid==True):
-                nei_3 = [  i,j-1] if 0 <= j-1 <= dimY-1 and 0 <=   i <= dimX-1 else [i,dimY-1]
+                nei_3 = [  i,j-1] if 0 <= j-1 <= self.dimY-1 and 0 <=   i <= self.dimX-1 else [i,self.dimY-1]
             elif ([  i,j-1] in self.unavail) & (latlon_grid==True):
                 nei_3 = [i_nan,j_nan]
             if ([  i,j+1] not in self.unavail) & (latlon_grid==False):
-                nei_4 = [  i,j+1] if 0 <= j+1 <= dimY-1 and 0 <=   i <= dimX-1 else [i_nan,j_nan]
+                nei_4 = [  i,j+1] if 0 <= j+1 <= self.dimY-1 and 0 <=   i <= self.dimX-1 else [i_nan,j_nan]
             elif ([  i,j+1] in self.unavail) & (latlon_grid==False):
                 nei_4 = [i_nan,j_nan]
             elif ([  i,j+1] not in self.unavail) & (latlon_grid==True):
-                nei_4 = [  i,j+1] if 0 <= j+1 <= dimY-1 and 0 <=   i <= dimX-1 else [i,0]
+                nei_4 = [  i,j+1] if 0 <= j+1 <= self.dimY-1 and 0 <=   i <= self.dimX-1 else [i,0]
             elif ([  i,j+1] in self.unavail) & (latlon_grid==True):
                 nei_4 = [i_nan,j_nan]
             return nei_1, nei_2, nei_3, nei_4
@@ -80,13 +84,13 @@ class Network:
             Anei_4 = []
             for A in range(np.shape(Area[k])[0]):
                 if [Area[k][A][0]-1,Area[k][A][1]] not in self.unavail:
-                    Anei_1.append([Area[k][A][0]-1,Area[k][A][1]] if 0 <=   Area[k][A][1] <= dimY-1 and 0 <= Area[k][A][0]-1 <= dimX-1 else [i_nan,j_nan])
+                    Anei_1.append([Area[k][A][0]-1,Area[k][A][1]] if 0 <=   Area[k][A][1] <= self.dimY-1 and 0 <= Area[k][A][0]-1 <= self.dimX-1 else [i_nan,j_nan])
                 if [Area[k][A][0]+1,Area[k][A][1]] not in self.unavail:
-                    Anei_2.append([Area[k][A][0]+1,Area[k][A][1]] if 0 <=   Area[k][A][1] <= dimY-1 and 0 <= Area[k][A][0]+1 <= dimX-1 else [i_nan,j_nan])
+                    Anei_2.append([Area[k][A][0]+1,Area[k][A][1]] if 0 <=   Area[k][A][1] <= self.dimY-1 and 0 <= Area[k][A][0]+1 <= self.dimX-1 else [i_nan,j_nan])
                 if [Area[k][A][0],Area[k][A][1]-1] not in self.unavail:
-                    Anei_3.append([Area[k][A][0],Area[k][A][1]-1] if 0 <=   Area[k][A][1]-1 <= dimY-1 and 0 <= Area[k][A][0] <= dimX-1 else [i_nan,j_nan])
+                    Anei_3.append([Area[k][A][0],Area[k][A][1]-1] if 0 <=   Area[k][A][1]-1 <= self.dimY-1 and 0 <= Area[k][A][0] <= self.dimX-1 else [i_nan,j_nan])
                 if [Area[k][A][0],Area[k][A][1]+1] not in self.unavail:
-                    Anei_4.append([Area[k][A][0],Area[k][A][1]+1] if 0 <=   Area[k][A][1]+1 <= dimY-1 and 0 <= Area[k][A][0] <= dimX-1 else [i_nan,j_nan])
+                    Anei_4.append([Area[k][A][0],Area[k][A][1]+1] if 0 <=   Area[k][A][1]+1 <= self.dimY-1 and 0 <= Area[k][A][0] <= self.dimX-1 else [i_nan,j_nan])
             return Anei_1, Anei_2, Anei_3, Anei_4
 
         def area_max_correlation(area_neighbours, Area):
@@ -94,10 +98,10 @@ class Network:
             X = []
             for nei in area_neighbours:
                 R = []
-                if ((nei[0][0]*dimY)+nei[0][1]) in self.nodes[0,:]:
+                if ((nei[0][0]*self.dimY)+nei[0][1]) in self.nodes[0,:]:
                     #print('Anei = ',nei)
                     X.append(nei)
-                    ID_new = np.where(self.nodes[0,:] == ((nei[0][0]*dimY)+nei[0][1]))
+                    ID_new = np.where(self.nodes[0,:] == ((nei[0][0]*self.dimY)+nei[0][1]))
                     ID_new = int(ID_new[0])
                     #print('ID_new = ',ID_new)
                     for a in range(np.shape(Area[k])[0]):
@@ -154,9 +158,9 @@ class Network:
         self.unavail = []
         k = 0
         #print('Creating Network Areas of '+str(month))
-        for i,j in itertools.product(range(dimX),range(dimY)):
-            if ((i*dimY)+j) in self.nodes[0,:]:
-                ID = np.where(self.nodes[0,:] == ((i*dimY)+j))
+        for i,j in itertools.product(range(self.dimX),range(self.dimY)):
+            if ((i*self.dimY)+j) in self.nodes[0,:]:
+                ID = np.where(self.nodes[0,:] == ((i*self.dimY)+j))
                 ID = int(ID[0])
                 #print('ID = ',ID)
                 if [i,j] not in self.unavail:
@@ -232,7 +236,7 @@ class Network:
                                 for cell in hypoth_area:
                                     #print(cell)
                                     R = []
-                                    ID = np.where(self.nodes[0,:] == (cell[0]*dimY)+cell[1])
+                                    ID = np.where(self.nodes[0,:] == (cell[0]*self.dimY)+cell[1])
                                     ID = int(ID[0])
                                     for a in range(np.shape(hypoth_area)[0]):
                                         b = int(hypoth_area[a][0])
@@ -276,53 +280,47 @@ class Network:
         #print('Largest Area = #',max_ID,' with ',len(self.V[max_ID]),' cells')
         #print('2nd Largest Area = #',max_ID2,' with ',len(self.V[max_ID2]),' cells')
                 
-    def intra_links(self, data, area=None, lat=None, cellsize=None):
+    def intra_links(self, area=None, lat=None):
+        """
+        compute the anomaly time series associated with
+        every node of the network, and subsequently compute
+        weighted links (based on covariance) between all of
+        these nodes. The strength of each node (also known as
+        the weighted degree), is defined as the sum of the
+        absolute value of each nodes links. Here the network
+        is fully connected, so every node connects to every other
+        node
+        """
         self.anomaly = {}
         self.links = {}
         self.strength = {}
+        self.strengthmap = np.zeros((self.dimX,self.dimY))*np.nan
         if lat is not None:
-            cos_lats = np.sqrt(np.cos(np.radians(lat)))
-            for A in self.V:
-                temp_array = np.zeros((data.shape))
-                temp_array[temp_array==0] = np.nan
-                for cell in self.V[A]:
-                    temp_array[cell[0],cell[1],:] = np.multiply(data[cell[0],cell[1],:],cos_lats[cell[0],cell[1]])
-                temp = np.nansum(temp_array, axis=(0,1))
-                self.anomaly[A] = temp
+            scale = np.sqrt(np.cos(np.radians(lat)))
         elif area is not None:
-            for A in self.V:
-                temp_array = np.zeros((data.shape))
-                temp_array[temp_array==0] = np.nan
-                for cell in self.V[A]:
-                    temp_array[cell[0],cell[1],:] = np.multiply(data[cell[0],cell[1],:],area[cell[0],cell[1]])
-                temp = np.nansum(temp_array, axis=(0,1))
-                self.anomaly[A] = temp
-        else: #grid cells are equal in area
-            for A in self.V:
-                temp_array = np.zeros((data.shape))
-                temp_array[temp_array==0] = np.nan
-                for cell in self.V[A]:
-                    temp_array[cell[0],cell[1],:] = data[cell[0],cell[1],:]*cellsize
-                temp = np.nansum(temp_array, axis=(0,1))
-                self.anomaly[A] = temp
-          
-        for A in self.anomaly: 
-            SD1 = np.std(self.anomaly[A])
+            scale = np.sqrt(area)
+        else:
+            scale = np.ones((self.dimX,self.dimY))
+            
+        for A in self.V:
+            temp_array = np.zeros(self.data.shape)*np.nan
+            for cell in self.V[A]:
+                temp_array[cell[0],cell[1],:] = np.multiply(self.data[cell[0],cell[1],:],scale[cell[0],cell[1]])
+            self.anomaly[A] = np.nansum(temp_array, axis=(0,1))
+            
+        for A in self.anomaly:
+            sdA = np.std(self.anomaly[A])
             for A2 in self.anomaly:
+                sdA2 = np.std(self.anomaly[A2])
                 if A2 != A:
-                    SD2 = np.std(self.anomaly[A2])
-                    SDs = np.multiply(SD1,SD2)
-                    R = stats.pearsonr(self.anomaly[A],self.anomaly[A2])[0]
-                    self.links.setdefault(A, []).append(np.multiply(SDs,R)) #covariance
+                    self.links.setdefault(A, []).append(stats.pearsonr(self.anomaly[A],self.anomaly[A2])[0]*(sdA*sdA2))
                 elif A2 == A:
-                    self.links.setdefault(A, []).append(np.nan)
-              
+                    self.links.setdefault(A, []).append(0)
+            
         for A in self.links:
-            absolute = []  
-            for i in self.links[A]:
-                if i != 100:
-                    absolute.append(abs(i))
-            self.strength.setdefault(A, []).append(np.nansum(absolute))
-        max_ID = max(self.strength.items(), key=operator.itemgetter(1))[0]
-        #print(str(month)+' area with highest strength = #',max_ID,'with strength of ',self.strength[max_ID])
-        
+            absolute_links = []  
+            for link in self.links[A]:
+                absolute_links.append(abs(link))
+            self.strength[A] = np.nansum(absolute_links)
+            for cell in self.V[A]:
+                self.strengthmap[cell[0],cell[1]] = self.strength[A]
