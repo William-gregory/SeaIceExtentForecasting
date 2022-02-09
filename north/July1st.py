@@ -57,13 +57,11 @@ def readNSIDC(ymax):
     SIC['lonr'],SIC['latr'] = m.makegrid(int((m.xmax-m.xmin)/1e5)+1, int((m.ymax-m.ymin)/1e5)+1)
     SIC['xr'],SIC['yr']=m(SIC['lonr'],SIC['latr'])
     dXR,dYR = SIC['xr'].shape
-    SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
-    monthly = np.zeros((dimX,dimY,ymax-1979+1))*np.nan
+    SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'linear')
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
-    month = 5
     k = 0
     for year in range(1979,ymax+1):
-        if year == ymax:
+        if (year == ymax) or (year == ymax-1):
             if len(glob.glob(home+'/DATA/nt_'+str(year)+'06*nrt_n.bin'))==0:
                 for day in range(1,30+1):
                     with closing(request.urlopen(sic_ftp1+'/nt_'+str(year)+'06'+str('%02d'%day)+'_f18_nrt_n.bin')) as r:
@@ -81,7 +79,7 @@ def readNSIDC(ymax):
                 z=struct.unpack_from(s, contents, offset = 300)
                 daily[:,:,f] = (np.array(z).reshape((dimX,dimY)))/250
                 f += 1
-            monthly[:,:,k] = np.nanmean(daily,2)
+            monthly = np.nanmean(daily,2)
         else:
             if year < 1988:
                 sat = 'n07'
@@ -103,23 +101,18 @@ def readNSIDC(ymax):
             icefile.close()
             s="%dB" % (int(dimX*dimY),)
             z=struct.unpack_from(s, contents, offset = 300)
-            monthly[:,:,k] = (np.array(z).reshape((dimX,dimY)))/250
-        data = monthly[:,:,k]
-        data[data>1] = np.nan
-        if year < 1987:
-            hole = 84.3
-        elif (year == 1987) & (month<=5):
-            hole = 84.3
-        elif (year == 1987) & (month>5):
-            hole = 84.3
+            monthly = (np.array(z).reshape((dimX,dimY)))/250
+        monthly[monthly>1] = np.nan
+        if year <= 1987:
+            hole=84.5
         elif (year > 1987) & (year < 2008):
-            hole=86.8
+            hole=87.2
         else:
-            hole=89
+            hole=89.2
         phole = np.nanmean(data[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
         filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, data)
         data_regrid[:,:,k] = griddata((SIC['x'].ravel(),SIC['y'].ravel()),filled.ravel(),\
-                                             (SIC['xr'],SIC['yr']),'nearest')
+                                             (SIC['xr'],SIC['yr']),'linear')
         k += 1
     SIC['data'] = data_regrid
     return SIC
@@ -141,21 +134,18 @@ def detrend(dataset):
     dataset['dt'] = detrended
     dataset['trend'] = trend
 
-def networks(dataset,latlon=True):
-    import ComplexNetworks as CN
-    dimXR = dataset['dt'].shape[0] ; dimYR = dataset['dt'].shape[1]
-    network = CN.Network(dimX=dimXR,dimY=dimYR)
-    CN.Network.tau(network, dataset['dt'], 0.01)
-    CN.Network.area_level(network, dataset['dt'],latlon_grid=latlon)
-    if latlon:
-        CN.Network.intra_links(network, dataset['dt'], lat=dataset['lat'])
-    else:
-        CN.Network.intra_links(network, dataset['dt'], area=dataset['psar'])
+def networks(dataset):
+    from CNs_backup.backups import CN_forecast as CN
+    network = CN.Network(data=dataset['dt'])
+    CN.Network.area_level(network,latlon_grid=False)
+    CN.Network.intra_links(network, area=dataset['psar'])
     dataset['nodes'] = network.V
     dataset['anoms'] = network.anomaly
 
 def forecast(ymax):
     regions = ['Pan-Arctic','Beaufort','Chukchi']
+    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],np.logspace(-7,2,20)[9]]
+    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],np.logspace(-3,9,20)[3]]
     alaska = 0
     for k in range(3):
         y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
@@ -197,9 +187,6 @@ def forecast(ymax):
                 nlML = np.inf
                 dKdθ1 = np.inf ; dKdθ2 = np.inf
             return np.squeeze(nlML), np.asarray([dKdθ1,dKdθ2])
-
-        l_init = [np.logspace(-7,2,15)[7],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[4]]
-        sigma_init = [np.logspace(-3,9,15)[0],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[9]]
 
         θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
                                              method='CG',jac=True,options={'disp':False}).x
@@ -247,17 +234,9 @@ SIEs,SIEs_dt,SIEs_trend = read_SIE()
 SIC = readNSIDC(ymax=fyear)
 print('Processing data...')
 detrend(SIC)
-networks(SIC,latlon=False)
+networks(SIC)
 print('Running forecast...')
 forecast(ymax=fyear)
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
 if cleanup == 'y':
     shutil.rmtree(home+'/DATA',ignore_errors=True)
-
-
-
-
-
-
-
-
