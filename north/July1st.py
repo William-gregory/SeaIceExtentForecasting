@@ -145,8 +145,8 @@ def networks(dataset):
 
 def forecast(ymax):
     regions = ['Pan-Arctic','Beaufort','Chukchi']
-    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],np.logspace(-7,2,20)[9]]
-    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],np.logspace(-3,9,20)[3]]
+    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],3.125433e+10]#np.logspace(-7,2,20)[9]]
+    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],40221.26298973]#np.logspace(-3,9,20)[3]]
     alaska = 0
     for k in range(3):
         y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
@@ -189,10 +189,11 @@ def forecast(ymax):
                 dKdθ1 = np.inf ; dKdθ2 = np.inf
             return np.squeeze(nlML), np.asarray([dKdθ1,dKdθ2])
 
-        θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
-                                             method='CG',jac=True,options={'disp':False}).x
+        #θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
+        #                                     method='CG',jac=True,options={'disp':False}).x
 
-        ℓ = np.exp(θ[0]) ; σn_tilde = np.exp(θ[1])
+        #ℓ = np.exp(θ[0]) ; σn_tilde = np.exp(θ[1])
+        ℓ = l_init[k] ; σn_tilde = sigma_init[k]
         Σ_tilde = expm(ℓ*M)
         L_tilde = np.linalg.cholesky(np.linalg.multi_dot([X,Σ_tilde,X.T]) + np.eye(n)*σn_tilde)
         A_tilde = np.linalg.solve(L_tilde.T,np.linalg.solve(L_tilde,y))
