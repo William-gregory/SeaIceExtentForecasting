@@ -57,13 +57,11 @@ def readNSIDC(fmin,fmax):
     SIC['lonr'],SIC['latr'] = m.makegrid(int((m.xmax-m.xmin)/1e5)+1, int((m.ymax-m.ymin)/1e5)+1)
     SIC['xr'],SIC['yr']=m(SIC['lonr'],SIC['latr'])
     dXR,dYR = SIC['xr'].shape
-    SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
-    monthly = np.zeros((dimX,dimY,fmax-1979+1))*np.nan
+    SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'linear')
     data_regrid = np.zeros((dXR,dYR,fmax-1979+1))*np.nan
-    month = 5
     k = 0
     for year in range(1979,fmax+1):
-        if (year == fmax) or (year == fmax-1):
+        if (year == ymax) or (year == ymax-1):
             if len(glob.glob(home+'/DATA/nt_'+str(year)+'06*nrt_n.bin'))==0:
                 for day in range(1,30+1):
                     with closing(request.urlopen(sic_ftp1+'/nt_'+str(year)+'06'+str('%02d'%day)+'_f18_nrt_n.bin')) as r:
@@ -81,7 +79,7 @@ def readNSIDC(fmin,fmax):
                 z=struct.unpack_from(s, contents, offset = 300)
                 daily[:,:,f] = (np.array(z).reshape((dimX,dimY)))/250
                 f += 1
-            monthly[:,:,k] = np.nanmean(daily,2)
+            monthly = np.nanmean(daily,2)
         else:
             if year < 1988:
                 sat = 'n07'
@@ -103,23 +101,18 @@ def readNSIDC(fmin,fmax):
             icefile.close()
             s="%dB" % (int(dimX*dimY),)
             z=struct.unpack_from(s, contents, offset = 300)
-            monthly[:,:,k] = (np.array(z).reshape((dimX,dimY)))/250
-        data = monthly[:,:,k]
-        data[data>1] = np.nan
-        if year < 1987:
-            hole = 84.3
-        elif (year == 1987) & (month<=5):
-            hole = 84.3
-        elif (year == 1987) & (month>5):
-            hole = 84.3
+            monthly = (np.array(z).reshape((dimX,dimY)))/250
+        monthly[monthly>1] = np.nan
+        if year <= 1987:
+            hole=84.5
         elif (year > 1987) & (year < 2008):
-            hole=86.8
+            hole=87.2
         else:
-            hole=89
-        phole = np.nanmean(data[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
-        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, data)
+            hole=89.2
+        phole = np.nanmean(monthly[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
+        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, monthly)
         data_regrid[:,:,k] = griddata((SIC['x'].ravel(),SIC['y'].ravel()),filled.ravel(),\
-                                             (SIC['xr'],SIC['yr']),'nearest')
+                                             (SIC['xr'],SIC['yr']),'linear')
         k += 1
     SIC['data'] = data_regrid
     return SIC
@@ -143,23 +136,21 @@ def detrend(dataset,fmin,fmax):
         dataset['dt_'+str(year)] = detrended
         dataset['trend_'+str(year)] = trend
 
-def networks(dataset,fmin,fmax,latlon=True):
+def networks(dataset,fmin,fmax):
     import ComplexNetworks as CN
     for year in range(fmin,fmax+1):
-        dimXR = dataset['dt_'+str(year)].shape[0] ; dimYR = dataset['dt_'+str(year)].shape[1]
-        network = CN.Network(dimX=dimXR,dimY=dimYR)
-        CN.Network.tau(network, dataset['dt_'+str(year)], 0.01)
-        CN.Network.area_level(network, dataset['dt_'+str(year)],latlon_grid=latlon)
-        if latlon:
-            CN.Network.intra_links(network, dataset['dt_'+str(year)], lat=dataset['lat'])
-        else:
-            CN.Network.intra_links(network, dataset['dt_'+str(year)], area=dataset['psar'])
+        network = CN.Network(data=dataset['dt_'+str(year)])
+        CN.Network.tau(network, 0.01)
+        CN.Network.area_level(network,latlon_grid=False)
+        CN.Network.intra_links(network, area=dataset['psar'])
         dataset['nodes_'+str(year)] = network.V
         dataset['anoms_'+str(year)] = network.anomaly
 
 def forecast(fmin,fmax):
     regions = ['Pan-Arctic','Beaufort','Chukchi']
     GPR = {}
+    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],np.logspace(-7,2,20)[9]]
+    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],np.logspace(-3,9,20)[3]]
     for k in range(3):
         fmean = np.zeros(fmax-fmin+1)
         fvar = np.zeros(fmax-fmin+1)
@@ -172,7 +163,6 @@ def forecast(fmin,fmax):
                 r,p = pearsonr(y[:,0],SIC['anoms_'+str(year)][area][:-1])
                 if r>0:
                     X.append(SIC['anoms_'+str(year)][area])            
-
             X = np.asarray(X).T #n x N
             Xs = np.asarray([X[-1,:]])
             X = X[:-1,:]
@@ -205,9 +195,6 @@ def forecast(fmin,fmax):
                     dKdθ1 = np.inf ; dKdθ2 = np.inf
                 return np.squeeze(nlML), np.asarray([dKdθ1,dKdθ2])
 
-            l_init = [np.logspace(-7,2,15)[7],np.logspace(-7,2,15)[0],np.logspace(-7,2,15)[4]]
-            sigma_init = [np.logspace(-3,9,15)[0],np.logspace(-3,9,15)[11],np.logspace(-3,9,15)[9]]
-
             θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
                                                  method='CG',jac=True,options={'disp':False}).x
 
@@ -232,6 +219,7 @@ def forecast(fmin,fmax):
         GPR[regions[k]+'_fmean'] = fmean
         GPR[regions[k]+'_fvar'] = fvar
         GPR[regions[k]+'_fmean_rt'] = fmean_rt
+        
     return GPR
 
 def skill(fmin,fmax):
@@ -267,11 +255,11 @@ sic_ftp1 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0081_nrt_nasateam_seaice/nor
 sic_ftp2 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0051_gsfc_nasateam_seaice/final-gsfc/north/monthly'
 
 ymax = int(datetime.date.today().year)
-m = Basemap(projection='npstere',boundinglat=65,lon_0=360,resolution='l')
-fmin = int(input('Please specify first year you would like to forecast (must be > 1979):\n'))
+m = Basemap(projection='npstere',boundinglat=65,lon_0=0,resolution='l')
+fmin = int(input('Please specify first year you would like to forecast (must be > 1980):\n'))
 fmax = int(input('Please specify last year you would like to forecast (must be < '+str(ymax)+'):\n'))
-if fmin < 1980:
-    fmin = 1980
+if fmin < 1981:
+    fmin = 1981
 if fmax > ymax-1:
     fmax = ymax-1
 
@@ -280,7 +268,7 @@ SIEs,SIEs_dt,SIEs_trend = read_SIE(fmin,fmax)
 SIC = readNSIDC(fmin,fmax)
 print('Processing data...')
 detrend(SIC,fmin,fmax)
-networks(SIC,fmin,fmax,latlon=False)
+networks(SIC,fmin,fmax)
 print('Running forecast...')
 GPR = forecast(fmin,fmax)
 skill_rt,skill_dt,dt_obs = skill(fmin,fmax)
@@ -307,17 +295,9 @@ data_rt = list(zip(prep(SIEs['Pan-Arctic'][fmin-1979:]),prep(GPR['Pan-Arctic_fme
                    prep(GPR['Beaufort_fmean_rt'],skill_rt[1]),prep(SIEs['Chukchi'][fmin-1979:]),prep(GPR['Chukchi_fmean_rt'],skill_rt[2])))
 df_rt = pd.DataFrame(data_rt, index=years, columns=columns2)
 
-df_dt.to_csv('./July1st_detrended_forecasts_'+str(fmin)+'-'+str(fmax)+'.csv')
-df_rt.to_csv('./July1st_forecasts_with_trend_'+str(fmin)+'-'+str(fmax)+'.csv')
+df_dt.to_csv(home+'/July1st_detrended_forecasts_'+str(fmin)+'-'+str(fmax)+'.csv')
+df_rt.to_csv(home+'/July1st_forecasts_with_trend_'+str(fmin)+'-'+str(fmax)+'.csv')
 
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
 if cleanup == 'y':
     shutil.rmtree(home+'/DATA',ignore_errors=True)
-
-
-
-
-
-
-
-
