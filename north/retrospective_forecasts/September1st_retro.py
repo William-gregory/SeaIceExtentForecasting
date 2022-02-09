@@ -137,7 +137,7 @@ def detrend(dataset,fmin,fmax):
         dataset['trend_'+str(year)] = trend
 
 def networks(dataset,fmin,fmax):
-    from CNs_backup.backups import CN_forecast as CN
+    import ComplexNetworks as CN
     for year in range(fmin,fmax+1):
         network = CN.Network(data=dataset['dt_'+str(year)])
         CN.Network.tau(network, 0.01)
