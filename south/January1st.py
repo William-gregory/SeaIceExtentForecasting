@@ -59,6 +59,7 @@ def readNSIDC(ymax):
     dXR,dYR = SIC['xr'].shape
     SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
+    month = 7
     k = 0
     for year in range(1979,ymax+1):
         if (year == ymax) or (year == ymax-1):
@@ -123,24 +124,22 @@ def detrend(dataset):
             trend[i,j,1] = reg[1]
             detrended[i,j,range(T)]=data[i,j,range(T)]-lineT
 
-    dataset['dt'] = detrended
-    dataset['trend'] = trend
+            dataset['dt'] = detrended
+            dataset['trend'] = trend
 
-def networks(dataset,latlon=True):
+def networks(dataset):
     import ComplexNetworks as CN
-    dimXR = dataset['dt'].shape[0] ; dimYR = dataset['dt'].shape[1]
-    network = CN.Network(dimX=dimXR,dimY=dimYR)
-    CN.Network.tau(network, dataset['dt'], 0.01)
-    CN.Network.area_level(network, dataset['dt'],latlon_grid=latlon)
-    if latlon:
-        CN.Network.intra_links(network, dataset['dt'], lat=dataset['lat'])
-    else:
-        CN.Network.intra_links(network, dataset['dt'], area=dataset['psar'])
+    network = CN.Network(data=dataset['dt'])
+    CN.Network.tau(network, 0.01)
+    CN.Network.area_level(network,latlon_grid=False)
+    CN.Network.intra_links(network, area=dataset['psar'])
     dataset['nodes'] = network.V
     dataset['anoms'] = network.anomaly
 
 def forecast(ymax):
     regions = ['Pan-Antarctic','Ross','Weddell']
+    l_init = [np.logspace(-7,2,20)[2],np.logspace(-7,2,20)[1],np.logspace(-7,2,20)[3]]
+    sigma_init = [np.logspace(-3,9,20)[14],np.logspace(-3,9,20)[14],np.logspace(-3,9,20)[14]]
     for k in range(3):
         y = np.asarray([SIEs_dt[regions[k]][1:]]).T #n x 1
         n = len(y)
@@ -185,13 +184,11 @@ def forecast(ymax):
                 dKdθ1 = np.inf ; dKdθ2 = np.inf
             return np.squeeze(nlML), np.asarray([dKdθ1,dKdθ2])
 
-        l_init = [np.logspace(-7,2,15)[7],np.logspace(-7,2,15)[5],np.logspace(-7,2,15)[4]]
-        sigma_init = [np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[4],np.logspace(-3,9,15)[8]]
+        #θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
+        #                                     method='CG',jac=True,options={'disp':False}).x
 
-        θ = minimize(MLII,x0=[np.log(l_init[k]),np.log(sigma_init[k])],\
-                                             method='CG',jac=True,options={'disp':False}).x
-
-        ℓ = np.exp(θ[0]) ; σn_tilde = np.exp(θ[1])
+        #ℓ = np.exp(θ[0]) ; σn_tilde = np.exp(θ[1])
+        ℓ = l_init[k] ; σn_tilde = sigma_init[k]
         Σ_tilde = expm(ℓ*M)
         L_tilde = np.linalg.cholesky(np.linalg.multi_dot([X,Σ_tilde,X.T]) + np.eye(n)*σn_tilde)
         A_tilde = np.linalg.solve(L_tilde.T,np.linalg.solve(L_tilde,y))
@@ -230,16 +227,9 @@ SIEs,SIEs_dt,SIEs_trend = read_SIE()
 SIC = readNSIDC(ymax=fyear-1)
 print('Processing data...')
 detrend(SIC)
-networks(SIC,latlon=False)
+networks(SIC)
 print('Running forecast...')
 forecast(ymax=fyear)
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
 if cleanup == 'y':
     shutil.rmtree(home+'/DATA',ignore_errors=True)
-
-
-
-
-
-
-
