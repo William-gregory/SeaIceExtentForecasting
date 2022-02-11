@@ -14,14 +14,15 @@ the steps below:
 
 1) cp ../ComplexNetworks.py ~/.local/lib/python3.7/site-packages/.
 2) pip install --user netCDF4
-3) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
-4) Once this is done, type command 5) below into the terminal, replacing uid and psswd with your details
-5) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
-6) chmod 0600 ~/.netrc
-7) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
-8) Place the hidden file .cdsapirc containing the url information and your api key into ~/.
-9) You may need to run pip install --user cdsapi
-10) python November1st.py (the forecasts will be printed to the terminal)
+3) pip install --user openpyxl
+4) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
+5) Once this is done, type command 5) below into the terminal, replacing uid and psswd with your details
+6) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
+7) chmod 0600 ~/.netrc
+8) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
+9) Place the hidden file .cdsapirc containing the url information and your api key into ~/.
+10) You may need to run pip install --user cdsapi
+11) python November1st.py (the forecasts will be printed to the terminal)
 
 
 
