@@ -50,7 +50,7 @@ def read_SIE():
     with closing(request.urlopen(sie_ftp+'/seaice_analysis/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')) as r:
         with open(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx', 'wb') as f:
                 shutil.copyfileobj(r, f)
-    xls = pd.ExcelFile(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')
+    xls = pd.ExcelFile(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx',engine='openpyxl')
     SIEs['Pan-Arctic'] = np.genfromtxt(home+'/DATA/N_09_extent_v3.0.csv',delimiter=',').T[4][1:]
     SIEs['Beaufort'] = np.array(np.array(pd.read_excel(xls, 'Beaufort-Extent-km^2')['September'])[3:-1]/1e6,dtype='float32')
     SIEs['Chukchi'] = np.array(np.array(pd.read_excel(xls, 'Chukchi-Extent-km^2')['September'])[3:-1]/1e6,dtype='float32')
