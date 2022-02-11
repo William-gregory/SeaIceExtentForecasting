@@ -193,7 +193,7 @@ def detrend(dataset):
     dataset['trend'] = trend
 
 def networks(dataset,latlon=True):
-    from CNs_backup.backups import CN_forecast as CN
+    import ComplexNetworks as CN
     network = CN.Network(data=dataset['dt'])
     CN.Network.tau(network, 0.01)
     CN.Network.area_level(network, latlon_grid=latlon)
