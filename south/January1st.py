@@ -1,7 +1,6 @@
 import numpy as np
 import datetime
 import shutil
-from mpl_toolkits.basemap import Basemap
 import urllib.request as request
 from contextlib import closing
 from netCDF4 import Dataset
@@ -16,6 +15,30 @@ from scipy.stats import linregress
 import os
 import warnings
 warnings.filterwarnings('ignore')
+
+def make_npstere_grid(boundinglat,lon_0,grid_res=25e3):
+    import pyproj as proj
+    p = proj.Proj('+proj=stere +R=6370997.0 +units=m +lon_0='+str(float(lon_0))+' +lat_ts=-90.0 +lat_0=-90.0',\
+                  preserve_units=True)
+    llcrnrlon = lon_0 + 45
+    urcrnrlon = lon_0 - 135
+    y_ = p(lon_0,boundinglat)[1]
+    llcrnrlat = p(np.sqrt(2.)*y_,0.,inverse=True)[1]
+    urcrnrlat = llcrnrlat
+    llcrnrx,llcrnry = p(llcrnrlon,llcrnrlat)
+    p = proj.Proj('+proj=stere +R=6370997.0 +units=m +lon_0='+str(float(lon_0))+' +lat_ts=-90.0 +lat_0=-90.0 +x_0='\
+                  +str(-llcrnrx)+' +y_0='+str(-llcrnry), preserve_units=True)
+    urcrnrx,urcrnry = p(urcrnrlon,urcrnrlat)
+
+    nx = int(urcrnrx/grid_res)+1
+    ny = int(urcrnry/grid_res)+1
+    dx = urcrnrx/(nx-1)
+    dy = urcrnry/(ny-1)
+
+    x = dx*np.indices((ny,nx),np.float32)[1,:,:]
+    y = dy*np.indices((ny,nx),np.float32)[0,:,:]
+    lon,lat = p(x,y,inverse=True)
+    return lon,lat,x,y,p
 
 def read_SIE(): 
     SIEs = {}
@@ -53,9 +76,8 @@ def readNSIDC(ymax):
     SIC['lat'] = (np.fromfile(home+"/misc/pss25lats_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
     SIC['lon'] = (np.fromfile(home+"/misc/pss25lons_v3.dat",dtype='<i4').reshape(dimX,dimY))/100000
     SIC['psa'] = (np.fromfile(home+"/misc/pss25area_v3.dat",dtype='<i4').reshape(dimX,dimY))/1000
-    SIC['x'],SIC['y'] = m(SIC['lon'],SIC['lat'])
-    SIC['lonr'],SIC['latr'] = m.makegrid(int((m.xmax-m.xmin)/1e5)+1, int((m.ymax-m.ymin)/1e5)+1)
-    SIC['xr'],SIC['yr']=m(SIC['lonr'],SIC['latr'])
+    SIC['lonr'],SIC['latr'],SIC['xr'],SIC['yr'],p = make_npstere_grid(-55,180,1e5)
+    SIC['x'],SIC['y'] = p(SIC['lon'],SIC['lat'])
     dXR,dYR = SIC['xr'].shape
     SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'nearest')
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
@@ -128,7 +150,7 @@ def detrend(dataset):
             dataset['trend'] = trend
 
 def networks(dataset):
-    import ComplexNetworks as CN
+    from CNs_backup.backups import CN_forecast as CN
     network = CN.Network(data=dataset['dt'])
     CN.Network.tau(network, 0.01)
     CN.Network.area_level(network,latlon_grid=False)
@@ -219,7 +241,6 @@ sie_ftp = 'ftp://sidads.colorado.edu/DATASETS/NOAA/G02135'
 sic_ftp1 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0081_nrt_nasateam_seaice/south'
 sic_ftp2 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0051_gsfc_nasateam_seaice/final-gsfc/south/monthly'
 
-m = Basemap(projection='spstere',boundinglat=-55,lon_0=180,resolution='l')
 fyear = int(datetime.date.today().year)
 
 print('Downloading and reading data...')
@@ -233,3 +254,10 @@ forecast(ymax=fyear)
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
 if cleanup == 'y':
     shutil.rmtree(home+'/DATA',ignore_errors=True)
+
+
+
+
+
+
+
