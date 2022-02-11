@@ -30,8 +30,8 @@ def make_npstere_grid(boundinglat,lon_0,grid_res=25e3):
                   +str(-llcrnrx)+' +y_0='+str(-llcrnry), preserve_units=True)
     urcrnrx,urcrnry = p(urcrnrlon,urcrnrlat)
 
-    nx = int(urcrnrx/grid_res)+1
-    ny = int(urcrnry/grid_res)+1
+    nx = -int(urcrnrx/grid_res)+1
+    ny = -int(urcrnry/grid_res)+1
     dx = urcrnrx/(nx-1)
     dy = urcrnry/(ny-1)
 
@@ -50,7 +50,7 @@ def read_SIE():
     with closing(request.urlopen(sie_ftp+'/seaice_analysis/S_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')) as r:
         with open(home+'/DATA/S_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx', 'wb') as f:
                 shutil.copyfileobj(r, f)
-    xls = pd.ExcelFile(home+'/DATA/S_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')
+    xls = pd.ExcelFile(home+'/DATA/S_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx',engine='openpyxl')
     SIEs['Pan-Antarctic'] = np.genfromtxt(home+'/DATA/S_02_extent_v3.0.csv',delimiter=',').T[4][1:]
     SIEs['Ross'] = np.array(np.array(pd.read_excel(xls, 'Ross-Extent-km^2')['February'])[3:-1]/1e6,dtype='float32')
     SIEs['Weddell'] = np.array(np.array(pd.read_excel(xls, 'Weddell-Extent-km^2')['February'])[3:-1]/1e6,dtype='float32')
