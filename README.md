@@ -5,4 +5,4 @@ The same scripts for forecasting Antarctic summer (February) sea ice (Pan-Antarc
 
 The method is based on Complex Networks and Gaussian Process Regression, as outlined in the article by [Gregory et al., 2020](https://discovery.ucl.ac.uk/id/eprint/10091542/1/Gregory_wafd190107.pdf)
 
-![alt text](https://github.com/William-gregory/SeaIceExtentForecasting/blob/master/images/PA_forecasts.png)
+![alt text](https://github.com/William-gregory/SeaIceExtentForecasting/blob/master/images/PA_forecasts.pdf)
