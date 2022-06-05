@@ -16,7 +16,7 @@ the steps below:
 2) pip install --user netCDF4
 3) pip install --user openpyxl
 4) If you don't have a NASA EarthData account, get one here: https://urs.earthdata.nasa.gov/users/new
-5) Once this is done, type command 5) below into the terminal, replacing uid and psswd with your details
+5) Once this is done, type command 6) below into the terminal, replacing uid and psswd with your details
 6) echo 'machine urs.earthdata.nasa.gov login uid password psswd' >> ~/.netrc
 7) chmod 0600 ~/.netrc
 8) Follow the steps here https://cds.climate.copernicus.eu/api-how-to to get a Copernicus CDS account
