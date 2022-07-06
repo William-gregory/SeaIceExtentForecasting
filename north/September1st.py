@@ -83,7 +83,7 @@ def readNSIDC(ymax):
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
     k = 0
     for year in range(1979,ymax+1):
-        if year == ymax:
+        if (year == ymax) or (year == ymax-1):
             if len(glob.glob(home+'/DATA/nt_'+str(year)+'08*nrt_n.bin'))==0:
                 for day in range(1,31+1):
                     with closing(request.urlopen(sic_ftp1+'/nt_'+str(year)+'08'+str('%02d'%day)+'_f18_nrt_n.bin')) as r:
