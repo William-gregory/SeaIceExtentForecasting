@@ -166,8 +166,8 @@ def networks(dataset):
 
 def forecast(ymax):
     regions = ['Pan-Arctic','Beaufort','Chukchi']
-    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],3.125433e+10]#np.logspace(-7,2,20)[9]]
-    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],40221.26298973]#np.logspace(-3,9,20)[3]]
+    l_init = [np.logspace(-7,2,20)[9],np.logspace(-7,2,20)[7],np.logspace(-7,2,20)[3]]
+    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[13],np.logspace(-3,9,20)[13]]
     alaska = 0
     for k in range(3):
         y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
@@ -175,8 +175,11 @@ def forecast(ymax):
         X = []
         for area in SIC['anoms']:
             r,p = pearsonr(y[:,0],SIC['anoms'][area][:-1])
-            if r>0:
-                X.append(SIC['anoms'][area])            
+            if k == 0:
+                X.append(SIC['anoms'][area])
+            else:
+                if (r>0) & (p/2<0.08):
+                    X.append(SIC['anoms'][area])         
 
         X = np.asarray(X).T #n x N
         Xs = np.asarray([X[-1,:]])
