@@ -180,7 +180,7 @@ def forecast(ymax):
                 X.append(SIC['anoms'][area])
             else:
                 if (r>0) & (p/2<0.05):
-                    X.append(SIC['anoms'][area])            
+                    X.append(SIC['anoms'][area])       
 
         X = np.asarray(X).T #n x N
         Xs = np.asarray([X[-1,:]])
