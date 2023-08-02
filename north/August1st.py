@@ -1,3 +1,4 @@
+import xarray as xr
 import numpy as np
 import datetime
 import shutil
@@ -50,7 +51,7 @@ def read_SIE():
     with closing(request.urlopen(sie_ftp+'/seaice_analysis/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')) as r:
         with open(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx', 'wb') as f:
                 shutil.copyfileobj(r, f)
-    xls = pd.ExcelFile(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx',engine='openpyxl')
+    xls = pd.ExcelFile(home+'/DATA/N_Sea_Ice_Index_Regional_Monthly_Data_G02135_v3.0.xlsx')
     SIEs['Pan-Arctic'] = np.genfromtxt(home+'/DATA/N_09_extent_v3.0.csv',delimiter=',').T[4][1:]
     SIEs['Beaufort'] = np.array(np.array(pd.read_excel(xls, 'Beaufort-Extent-km^2')['September'])[3:-1]/1e6,dtype='float32')
     SIEs['Chukchi'] = np.array(np.array(pd.read_excel(xls, 'Chukchi-Extent-km^2')['September'])[3:-1]/1e6,dtype='float32')
@@ -81,61 +82,59 @@ def readNSIDC(ymax):
     dXR,dYR = SIC['xr'].shape
     SIC['psar'] = 16*griddata((SIC['x'].ravel(),SIC['y'].ravel()),SIC['psa'].ravel(),(SIC['xr'],SIC['yr']),'linear')
     data_regrid = np.zeros((dXR,dYR,ymax-1979+1))*np.nan
-    k = 0
-    for year in range(1979,ymax+1):
-        if (year == ymax) or (year == ymax-1):
-            if len(glob.glob(home+'/DATA/nt_'+str(year)+'07*nrt_n.bin'))==0:
-                for day in range(1,31+1):
-                    with closing(request.urlopen(sic_ftp1+'/nt_'+str(year)+'07'+str('%02d'%day)+'_f18_nrt_n.bin')) as r:
-                        with open(home+'/DATA/nt_'+str(year)+'07'+str('%02d'%day)+'_f18_nrt_n.bin', 'wb') as f:
-                            shutil.copyfileobj(r, f)
-                    
-            files = sorted(glob.glob(home+'/DATA/nt_'+str(year)+'07'+'*nrt_n.bin'))
-            daily = np.zeros((dimX,dimY,len(files)))*np.nan
-            f = 0
-            for file in files:
-                icefile = open(file,'rb')
-                contents = icefile.read()
-                icefile.close()
-                s="%dB" % (int(dimX*dimY),)
-                z=struct.unpack_from(s, contents, offset = 300)
-                daily[:,:,f] = (np.array(z).reshape((dimX,dimY)))/250
-                f += 1
-            monthly = np.nanmean(daily,2)
-        else:
-            if year < 1988:
-                sat = 'n07'
-            elif (year > 1987) & (year < 1992):
-                sat = 'f08'
-            elif (year > 1991) & (year < 1996):
-                sat = 'f11'
-            elif (year > 1995) & (year < 2008):
-                sat = 'f13'
-            elif year > 2007:
-                sat = 'f17'
-            files = glob.glob(home+'/DATA/nt_'+str(year)+'07*.1_n.bin')
-            if len(files) == 0:
-                with closing(request.urlopen(sic_ftp2+'/nt_'+str(year)+'07_'+sat+'_v1.1_n.bin')) as r:
-                    with open(home+'/DATA/nt_'+str(year)+'07_'+sat+'_v1.1_n.bin', 'wb') as f:
-                            shutil.copyfileobj(r, f)
-            icefile = open(glob.glob(home+'/DATA/nt_'+str(year)+'07*.1_n.bin')[0], 'rb')
-            contents = icefile.read()
-            icefile.close()
-            s="%dB" % (int(dimX*dimY),)
-            z=struct.unpack_from(s, contents, offset = 300)
-            monthly = (np.array(z).reshape((dimX,dimY)))/250
-        monthly[monthly>1] = np.nan
+
+    #NRT data#
+    if os.path.exists('DATA/NSIDC0081_SEAICE_PS_N25km_'+str(ymax)+'0731_v2.0.nc') == False:
+        os.system("sed -i '' 's/DATEMIN/"+str(ymax)+"-07-01/g' nsidc_download_nrt.py")
+        os.system("sed -i '' 's/DATEMAX/"+str(ymax)+"-07-31/g' nsidc_download_nrt.py")
+        os.system("python nsidc_download_nrt.py")
+        while os.path.exists('NSIDC0081_SEAICE_PS_N25km_'+str(ymax)+'0731_v2.0.nc')==False:
+            pass
+        os.system('rm NSIDC0081*.xml')
+        os.system('rm NSIDC0081*.png')
+        os.system('mv NSIDC0081*.nc DATA')
+        os.system("sed -i '' 's/"+str(ymax)+"-07-01/DATEMIN/g' nsidc_download_nrt.py")
+        os.system("sed -i '' 's/"+str(ymax)+"-07-31/DATEMAX/g' nsidc_download_nrt.py")
+            
+    NRT = xr.open_mfdataset('DATA/NSIDC0081*.nc',concat_dim='time',combine='nested').F18_ICECON
+    NRT = NRT.where(NRT<=1).mean('time').to_numpy()
+            
+    #MONTHLY
+    if os.path.exists('DATA/NSIDC0051_SEAICE_PS_N25km_'+str((ymax-1))+'07_v2.0.nc') == False:
+        os.system("sed -i '' 's/YMAX/"+str((ymax-1))+"/g' nsidc_download_monthly.py")
+        os.system("python nsidc_download_monthly.py")
+        while os.path.exists('NSIDC0051_SEAICE_PS_N25km_'+str((ymax-1))+'07_v2.0.nc')==False:
+            pass
+        os.system('rm NSIDC0051*.xml')
+        os.system('mv NSIDC0051*.nc DATA')
+        os.system("sed -i '' 's/"+str((ymax-1))+"-07-31/YMAX-07-31/g' nsidc_download_monthly.py")
+
+    for k,year in enumerate(range(1979,ymax+1)):
         if year <= 1987:
-            hole=84.5
-        elif (year > 1987) & (year < 2008):
-            hole=87.2
+            key = 'N07_ICECON'
+            hole = 84.5
+        elif (year>1987) & (year<=1991):
+            key = 'F08_ICECON'
+            hole = 87.2
+        elif (year>1991) & (year<=1995):
+            key = 'F11_ICECON'
+            hole = 87.2
+        elif (year>1995) & (year<=2007):
+            key = 'F13_ICECON'
+            hole = 87.2
+        elif year>2007:
+            key = 'F17_ICECON'
+            hole = 89.2
+        if year == ymax:
+            data = NRT
         else:
-            hole=89.2
-        phole = np.nanmean(monthly[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
-        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, monthly)
+            data = xr.open_dataset('DATA/NSIDC0051_SEAICE_PS_N25km_'+str(year)+'07_v2.0.nc')[key].isel(time=0).to_numpy()
+            data[data>1] = np.nan
+
+        phole = np.nanmean(data[(SIC['lat'] > hole-0.5) & (SIC['lat'] < hole)]) #calculate the mean 0.5 degrees around polar hole
+        filled = np.ma.where((SIC['lat'] >= hole-0.5), phole, data)
         data_regrid[:,:,k] = griddata((SIC['x'].ravel(),SIC['y'].ravel()),filled.ravel(),\
                                              (SIC['xr'],SIC['yr']),'linear')
-        k += 1
     SIC['data'] = data_regrid
     return SIC
 
@@ -157,7 +156,7 @@ def detrend(dataset):
     dataset['trend'] = trend
 
 def networks(dataset):
-    import ComplexNetworks as CN
+    from ComplexNetworks import CN
     network = CN.Network(data=dataset['dt'])
     CN.Network.tau(network, 0.01)
     CN.Network.area_level(network,latlon_grid=False)
@@ -167,8 +166,8 @@ def networks(dataset):
 
 def forecast(ymax):
     regions = ['Pan-Arctic','Beaufort','Chukchi']
-    l_init = [np.logspace(-7,2,20)[9],np.logspace(-7,2,20)[7],np.logspace(-7,2,20)[3]]
-    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[13],np.logspace(-3,9,20)[13]]
+    l_init = [np.logspace(-7,2,20)[11],np.logspace(-7,2,20)[0],3.125433e+10]#np.logspace(-7,2,20)[9]]
+    sigma_init = [np.logspace(-3,9,20)[4],np.logspace(-3,9,20)[15],40221.26298973]#np.logspace(-3,9,20)[3]]
     alaska = 0
     for k in range(3):
         y = np.asarray([SIEs_dt[regions[k]]]).T #n x 1
@@ -176,11 +175,8 @@ def forecast(ymax):
         X = []
         for area in SIC['anoms']:
             r,p = pearsonr(y[:,0],SIC['anoms'][area][:-1])
-            if k == 0:
-                X.append(SIC['anoms'][area])
-            else:
-                if (r>0) & (p/2<0.08):
-                    X.append(SIC['anoms'][area])            
+            if r>0:
+                X.append(SIC['anoms'][area])            
 
         X = np.asarray(X).T #n x N
         Xs = np.asarray([X[-1,:]])
@@ -250,9 +246,6 @@ if os.path.exists(home+'/DATA')==False:
     os.mkdir(home+'/DATA')
     os.chmod(home+'/DATA',0o0777)
 sie_ftp = 'ftp://sidads.colorado.edu/DATASETS/NOAA/G02135'
-sic_ftp1 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0081_nrt_nasateam_seaice/north'
-sic_ftp2 = 'ftp://sidads.colorado.edu/DATASETS/nsidc0051_gsfc_nasateam_seaice/final-gsfc/north/monthly'
-
 fyear = int(datetime.date.today().year)
 
 print('Downloading and reading data...')
@@ -266,10 +259,3 @@ forecast(ymax=fyear)
 cleanup = input('Would you like to remove all the downloaded data files to save disk space? y  n:\n')
 if cleanup == 'y':
     shutil.rmtree(home+'/DATA',ignore_errors=True)
-
-
-
-
-
-
-
